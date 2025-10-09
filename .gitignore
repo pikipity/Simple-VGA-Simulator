@@ -1,4 +1,8 @@
-
+db/*
+incremental_db/*
+greybox_tmp/*
+output_files/*
+sim/obj_dir/*
 db/.cmp.kpt
 db/mult_p5t.tdf
 db/pll_ip_altpll.v

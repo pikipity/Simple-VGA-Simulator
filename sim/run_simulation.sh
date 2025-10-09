@@ -28,7 +28,7 @@ fi
 echo "Start simulation..."
 echo "Include directories used: $INCLUDE_DIR"
 
-# 检查必要的文件是否存在[6](@ref)
+# 检查必要的文件是否存在
 if [ ! -f "simulator.cpp" ]; then
     echo "Error: simulator.cpp does not exist in the current directory"
     exit 1
