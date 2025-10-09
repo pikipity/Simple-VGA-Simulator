@@ -13,7 +13,7 @@ sudo apt-get install verilator
 sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
 ```
 
-After install them, you need to go to "sim" folder, and replace "Simple_VGA" module in "DevelopmentBoard.v" with your own module. 
+After install them, you need to go to "sim" folder, and replace "Simple_VGA" module in "DevelopmentBoard.v" with your own module. Note that all your modules should provide the timescale, like `` `timescale 1ns / 1ns``.
 
 Then, run "run_simulation.sh" with the path of your module. For example, if the relative path of your modules is ``../RTL``, you can use the following command:
 
