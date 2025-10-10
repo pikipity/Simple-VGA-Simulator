@@ -40,13 +40,19 @@ float graphics_buffer[ACTIVE_WIDTH][ACTIVE_HEIGHT][3] = {};
 
 // calculating each pixel's size in accordance to OpenGL system
 // each axis in OpenGL is in the range [-1:1]
-float pixel_w = 2.0 / ACTIVE_WIDTH;
-float pixel_h = 2.0 / ACTIVE_HEIGHT;
+// 重新计算VGA像素大小，保持原始比例
+float pixel_w = 2.0 / ACTIVE_WIDTH * 0.8f;
+float pixel_h = 2.0 / ACTIVE_HEIGHT * 0.8f;
 
 bool restart_triggered = false;
 
 // 在全局变量区域添加LED状态变量
 std::atomic<int> leds_state[5] = {1, 1, 1, 1, 1}; // 初始状态为灭(1)
+
+const int WINDOW_WIDTH = 800;  // 窗口宽度
+const int WINDOW_HEIGHT = 600; // 窗口高度
+const int VGA_DISPLAY_HEIGHT = 480; // VGA显示区域高度
+const int LED_DISPLAY_HEIGHT = 100; // LED显示区域高度
 
 // 添加圆形绘制函数
 void drawCircle(float cx, float cy, float r, int num_segments) {
@@ -63,21 +69,50 @@ void drawCircle(float cx, float cy, float r, int num_segments) {
 // gets called periodically to update screen
 void render(void) {
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // 绘制VGA显示区域背景
+    glColor3f(0.1f, 0.1f, 0.1f);
+    glRectf(-1.0f, -1.0f, 1.0f, 1.0f);
+
+    // 绘制VGA显示区域标题
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(-0.9f, 0.9f);
+    std::string vga_title = "VGA screen";
+    for (char c : vga_title) {
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, c);
+    }
     
     // convert pixels into OpenGL rectangles
     for(int i = 0; i < ACTIVE_WIDTH; i++){
         for(int j = 0; j < ACTIVE_HEIGHT; j++){
             glColor3f(graphics_buffer[i][j][0], graphics_buffer[i][j][1], graphics_buffer[i][j][2]);
-            glRectf(i*pixel_w-1, -j*pixel_h+1, (i+1)*pixel_w-1, -(j+1)*pixel_h+1);
+            // 调整VGA显示位置，使其位于VGA区域中心
+            float x1 = (i * pixel_w - 0.8f) * 0.8f;
+            float y1 = (-j * pixel_h + 0.6f) * 0.8f+0.3f;
+            float x2 = ((i+1) * pixel_w - 0.8f) * 0.8f;
+            float y2 = (-(j+1) * pixel_h + 0.6f) * 0.8f+0.3f;
+            glRectf(x1, y1, x2, y2);
         }
     }
 
-    // 绘制LED区域
-    float led_spacing = 2.0f / 6.0f; // 6个间隔(5个LED)
-    float led_radius = 0.03f;
+    // 绘制LED显示区域背景
+    glColor3f(0.2f, 0.2f, 0.2f);
+    glRectf(-1.0f, -1.0f, 1.0f, -0.8f);
+
+    // 绘制LED显示区域标题
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(-0.9f, -0.85f);
+    std::string led_title = "LED";
+    for (char c : led_title) {
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, c);
+    }
+
+    // 绘制LED
+    float led_spacing = 1.6f / 6.0f; // LED之间的间距
+    float led_radius = 0.04f;        // LED半径
     
     for(int i = 0; i < 5; i++){
-        float x_pos = -0.9f + (i+1) * led_spacing;
+        float x_pos = -0.8f + (i+1) * led_spacing;
         float y_pos = -0.9f;
         
         // 绘制LED底座
@@ -158,14 +193,18 @@ void keyReleased(unsigned char key, int x, int y) {
 void graphics_loop(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE);
-    glutInitWindowSize(ACTIVE_WIDTH, ACTIVE_HEIGHT);
+    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow("VGA Simulator");
+    glutCreateWindow("VGA and LED Simulator");
     glutDisplayFunc(render);
     glutKeyboardFunc(keyPressed);
     glutKeyboardUpFunc(keyReleased);
     
     gl_setup_complete = true;
+
+    
+    
+    
     
     // re-render every 16ms, around 60Hz
     glutTimerFunc(16, glutTimer, 16);
