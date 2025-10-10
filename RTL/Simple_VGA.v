@@ -10,9 +10,21 @@ input wire right,
 
 output wire hsync , //Line sync signal
 output wire vsync , //Field sync signal
-output wire [15:0] rgb //RGB565 color data
+output wire [15:0] rgb, //RGB565 color data
+
+output wire led1,
+output wire led2,
+output wire led3,
+output wire led4,
+output wire led5
 
 );
+
+assign led1 = sys_rst_n;
+assign led2 = up;
+assign led3 = down;
+assign led4 = left;
+assign led5 = right;
 
  ////
  //\* Parameter and Internal Signal \//

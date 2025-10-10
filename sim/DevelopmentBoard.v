@@ -9,7 +9,13 @@ module DevelopmentBoard(
 	 // B4 is "f"
 	 // B5 is "g"
     output wire h_sync, v_sync,
-    output wire [15:0] rgb
+    output wire [15:0] rgb,
+	
+	output wire led1,
+	output wire led2,
+	output wire led3,
+	output wire led4,
+	output wire led5
 );
 
 	// instance your model
@@ -22,7 +28,12 @@ module DevelopmentBoard(
 		.up(B2),
 		.down(B3),
 		.left(B4),
-		.right(B5)
+		.right(B5),
+		.led1(led1),
+		.led2(led2),
+		.led3(led3),
+		.led4(led4),
+		.led5(led5)
 	);
     
 

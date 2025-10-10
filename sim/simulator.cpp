@@ -45,6 +45,21 @@ float pixel_h = 2.0 / ACTIVE_HEIGHT;
 
 bool restart_triggered = false;
 
+// 在全局变量区域添加LED状态变量
+std::atomic<int> leds_state[5] = {1, 1, 1, 1, 1}; // 初始状态为灭(1)
+
+// 添加圆形绘制函数
+void drawCircle(float cx, float cy, float r, int num_segments) {
+    glBegin(GL_TRIANGLE_FAN);
+    for(int i = 0; i < num_segments; i++) {
+        float theta = 2.0f * 3.1415926f * float(i) / float(num_segments);
+        float x = r * cosf(theta);
+        float y = r * sinf(theta);
+        glVertex2f(x + cx, y + cy);
+    }
+    glEnd();
+}
+
 // gets called periodically to update screen
 void render(void) {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -56,9 +71,39 @@ void render(void) {
             glRectf(i*pixel_w-1, -j*pixel_h+1, (i+1)*pixel_w-1, -(j+1)*pixel_h+1);
         }
     }
+
+    // 绘制LED区域
+    float led_spacing = 2.0f / 6.0f; // 6个间隔(5个LED)
+    float led_radius = 0.03f;
+    
+    for(int i = 0; i < 5; i++){
+        float x_pos = -0.9f + (i+1) * led_spacing;
+        float y_pos = -0.9f;
+        
+        // 绘制LED底座
+        glColor3f(0.3f, 0.3f, 0.3f);
+        drawCircle(x_pos, y_pos, led_radius * 1.2f, 20);
+        
+        // 根据状态绘制LED
+        if(leds_state[i] == 0){
+            // LED亮
+            glColor3f(1.0f, 0.0f, 0.0f); // 红色
+        } else {
+            // LED灭
+            glColor3f(0.1f, 0.0f, 0.0f); // 暗红色
+        }
+        drawCircle(x_pos, y_pos, led_radius, 20);
+        
+        // 绘制LED编号
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos2f(x_pos - 0.01f, y_pos - 0.06f);
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, '0' + i);
+    }
     
     glFlush();
 }
+
+
 
 // timer to periodically update the screen
 void glutTimer(int t) {
@@ -275,6 +320,13 @@ void sample_pixel() {
 
     pre_h_sync = display->h_sync;
     pre_v_sync = display->v_sync;
+
+    // 更新LED状态
+    leds_state[0] = display->led1;
+    leds_state[1] = display->led2;
+    leds_state[2] = display->led3;
+    leds_state[3] = display->led4;
+    leds_state[4] = display->led5;
 }
 
 int main(int argc, char** argv) {
