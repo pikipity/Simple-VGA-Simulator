@@ -24,3 +24,5 @@ All you need are ``DevelopmentBoard.v``, ``run_simulation.sh`` and ``simulator.c
     ./run_simulation.sh ../RTL
     ```
 
+You can try the example by going to ``Example/sim`` folder and then runing the above command. You will see a ball in the center of the VGA screen. When you press "a", all system will be reset. When you press "s", the ball will go up, and the LED 1 will be turned on. When you press "d", the ball will go down, and LED 2 will be turned on. When you press "f", the ball will go left, and LED 3 will be turned on. When you press "g", the ball will go right, and LED 4 will be turned on. 
+
