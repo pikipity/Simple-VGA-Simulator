@@ -132,7 +132,7 @@ void render(void) {
         // 绘制LED编号
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos2f(x_pos - 0.01f, y_pos - 0.06f);
-        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, '0' + i);
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, '1' + i);
     }
     
     glFlush();
