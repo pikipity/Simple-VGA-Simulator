@@ -3,7 +3,10 @@
 module Simple_VGA(
 input wire sys_clk , //System Clock, 50MHz
 input wire sys_rst_n , //Reset signal. Low level is effective
-input wire button,
+input wire up,
+input wire down,
+input wire left,
+input wire right,
 
 output wire hsync , //Line sync signal
 output wire vsync , //Field sync signal
@@ -71,7 +74,10 @@ end
  .sys_rst_n (sys_rst_n ), //Reset signal. Low level is effective
  .pix_x (pix_x ), //x coordinate of current pixel
  .pix_y (pix_y ), //y coordinate of current pixel
- .button(button),
+ .up(up),
+ .down(down),
+ .left(left),
+ .right(right),
 
  .pix_data (pix_data ) //color information
 

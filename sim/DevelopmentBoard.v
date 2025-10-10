@@ -19,7 +19,10 @@ module DevelopmentBoard(
 		.hsync(h_sync),
 		.vsync(v_sync),
 		.rgb(rgb),
-		.button(B2)
+		.up(B2),
+		.down(B3),
+		.left(B4),
+		.right(B5)
 	);
     
 
