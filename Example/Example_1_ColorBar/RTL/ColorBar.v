@@ -6,7 +6,7 @@ input wire sys_rst_n , //Reset signal. Low level is effective
 
 output wire hsync , //Line sync signal
 output wire vsync , //Field sync signal
-output wire [15:0] rgb, //RGB565 color data
+output wire [15:0] rgb //RGB565 color data
 );
 
  ////
