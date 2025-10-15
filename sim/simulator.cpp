@@ -344,7 +344,6 @@ void sample_pixel() {
     if(display->v_sync && !pre_v_sync){ // on positive edge of v_sync (active high)
         // re-sync vertical counter: reset to 0
         coord_y = 0;
-        apply_input(); // inputs are pulsed once each new frame
     }
 
     if(coord_x >= H_ACTIVE_START && coord_x < H_ACTIVE_START + ACTIVE_WIDTH && 
@@ -366,6 +365,8 @@ void sample_pixel() {
     leds_state[2] = display->led3;
     leds_state[3] = display->led4;
     leds_state[4] = display->led5;
+
+    apply_input(); // inputs are pulsed once each new frame
 }
 
 int main(int argc, char** argv) {
