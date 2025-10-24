@@ -58,7 +58,7 @@ fi
 # 第一步：使用Verilator编译Verilog代码
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
-VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL)
+VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread)
 VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
