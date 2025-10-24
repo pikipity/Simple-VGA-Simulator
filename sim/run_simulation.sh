@@ -28,7 +28,7 @@ fi
 echo "Start simulation..."
 echo "Include directories used: $INCLUDE_DIR"
 
-# 检查必要的文件是否存在
+# 检查必要的文件是否存在[6](@ref)
 if [ ! -f "simulator.cpp" ]; then
     echo "Error: simulator.cpp does not exist in the current directory"
     exit 1
@@ -58,7 +58,7 @@ fi
 # 第一步：使用Verilator编译Verilog代码
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
-VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL)
+VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread)
 VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
