@@ -315,10 +315,11 @@ class VerilogTestbenchGenerator:
         filename = filedialog.askdirectory(
             title="Select simulation folder",
         )
-        filename = os.path.join(filename, f'DevelopmentBoard.v')
         
         if not filename:
             return
+        else:
+            filename = os.path.join(filename, f'DevelopmentBoard.v')
         
         try:
             with open(filename, 'w') as file:
