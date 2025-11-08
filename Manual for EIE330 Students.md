@@ -6,9 +6,9 @@
 
 The simulator requires ["verilator"](https://www.veripool.org/verilator/) and ["OpenGL"](https://www.opengl.org/). These 2 tools can be easily installed in Linux. 
 
-If you use Windows or Mac, you can use ["VirtualBox"](https://www.virtualbox.org/wiki/Downloads) and install ["Ubuntu"](https://releases.ubuntu.com/20.04.6/?_ga=2.149898549.2084151835.1707729318-1126754318.1683186906&_gl=1*192ep9o*_gcl_au*MTE3MTkxMjQzOC4xNzU5OTA0MjQz) in a virtual environment. I recommand using ``Ubuntu 20.04.6 LTS (Focal Fossa)`` version. If you use the VirtualBox, make sure that you install the ``"VirtualBox Guest Additions"`` and Set up the shared folder. Otherwise, you cannot access your files outside your virtual environment. You may refer the following videos and documents to install and set up "VirtualBox" and "Ubuntu".
+If you use Windows or Mac, you can use ["VirtualBox"](https://www.virtualbox.org/wiki/Downloads) and install ["Ubuntu"](https://ubuntu.com/) in a virtual environment. I recommand using [``Ubuntu 22.04 LTS`` version](https://releases.ubuntu.com/jammy/). If you use the VirtualBox, make sure that you install the ``"VirtualBox Guest Additions"`` and Set up the shared folder. Otherwise, you cannot access your files outside your virtual environment. You may refer the following videos and documents to install and set up "VirtualBox" and "Ubuntu".
 
-+ [How to Install Ubuntu 20.04 LTS on VirtualBox in Windows](https://www.youtube.com/watch?v=x5MhydijWmc)
++ [How to Install Ubuntu on VirtualBox in Windows](https://www.youtube.com/watch?v=x5MhydijWmc)
 + [How to Install VirtualBox Guest Additions on Ubuntu](https://www.linuxtechi.com/install-virtualbox-guest-additions-on-ubuntu/)
 + [How to set up the shared folders in VirtualBox](https://docs.oracle.com/en/virtualization/virtualbox/6.0/user/sharedfolders.html)
 
@@ -42,7 +42,6 @@ Go to [Simple-VGA-Simulator](https://github.com/pikipity/Simple-VGA-Simulator.gi
 
 This simulator provides the VGA displayer, a reset button, and 4 custom buttons.
 All you need are ``DevelopmentBoard.v``, ``simulator.cpp``, and ``run_simulation.sh`` in the ``sim`` folder of ``Simple-VGA-Simulator``. 
-You can consider that ``DevelopmentBoard.v`` is the development board that you used in our previous labs. 
 
 
 + Inputs of Development Board:
@@ -50,6 +49,8 @@ You can consider that ``DevelopmentBoard.v`` is the development board that you u
     + This development board contains a system clock ``clk``. It works on 50 MHz, which is also same as the development board that you used in previous labs.
 + Outputs of Development Board:
     + This development board contains VGA port pins:  Line synchronization signal pin ``h_sync``, field synchronization signal pin ``v_sync``, and color data pins ``rgb``. The color data also follows the RGB565, which is same as the development board that you used in labs.
+
+![Schematic Diagram](SchematicDiagram/SchematicDiagram.png)
 
 1. Make sure that all your own modules are in the same folder and include the timescale. For example, you can add `` `timescale 1ns / 1ns`` at the beginning of all your module files. 
 2. Make sure that your modules do not use the IP cores!!! If you use IP cores, implement your own module to replace them.
