@@ -191,15 +191,37 @@ class VerilogTestbenchGenerator:
             
             # Parse port declarations
             # Look for input/output declarations
-            input_pattern = r'input\s+(?:reg\s+|wire\s+|signed\s+|)*\s*(\[.*?\])*\s*(\w+)'
-            output_pattern = r'output\s+(?:reg\s+|wire\s+|signed\s+|)*\s*(\[.*?\])*\s*(\w+)'
+            # 获取模块端口声明部分
+            port_declaration = module_match.group(2)
             
-            inputs = re.findall(input_pattern, content)
-            outputs = re.findall(output_pattern, content)
+            # 改进的方法：逐行处理端口声明
+            lines = port_declaration.split('\n')
+            all_signals = []
             
-            # Extract signal names
-            self.module_signals.extend([inp[-1] for inp in inputs])
-            self.module_signals.extend([out[-1] for out in outputs])
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # 匹配端口方向（input/output）
+                direction_match = re.match(r'(input|output)', line, re.IGNORECASE)
+                if direction_match:
+                    # 移除方向关键字
+                    line = re.sub(r'^\s*(input|output)\s*', '', line, flags=re.IGNORECASE)
+                    
+                    # 移除可能的wire/reg关键字
+                    line = re.sub(r'^\s*(wire|reg)\s*', '', line, flags=re.IGNORECASE)
+                    
+                    # 移除位宽声明 [x:y]
+                    line = re.sub(r'\[[^\]]+\]', '', line)
+                    
+                    # 提取信号名称（可能包含多个逗号分隔的信号）
+                    signals = re.findall(r'(\w+)', line)
+                    all_signals.extend(signals)
+            
+            # 去重并排序
+            all_signals = sorted(list(set(all_signals)))
+            self.module_signals.extend(all_signals)
             
             # Update comboboxes
             for combobox_i in range(len(self.combobox_list)):
@@ -208,7 +230,7 @@ class VerilogTestbenchGenerator:
                     self.combobox_list[combobox_i].current(0)
             
             messagebox.showinfo("Success", f"Successfully parsed module '{module_name}'\n"
-                                            f"Found {len(self.module_signals)} inputs and outputs")
+                                            f"Found {len(self.module_signals)-1} inputs and outputs")
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to parse Verilog file: {str(e)}")
