@@ -42,7 +42,6 @@ Go to [Simple-VGA-Simulator](https://github.com/pikipity/Simple-VGA-Simulator.gi
 
 This simulator provides the VGA displayer, a reset button, and 4 custom buttons.
 All you need are ``DevelopmentBoard.v``, ``simulator.cpp``, and ``run_simulation.sh`` in the ``sim`` folder of ``Simple-VGA-Simulator``. 
-You can consider that ``DevelopmentBoard.v`` is the development board that you used in our previous labs. 
 
 
 + Inputs of Development Board:
@@ -50,6 +49,8 @@ You can consider that ``DevelopmentBoard.v`` is the development board that you u
     + This development board contains a system clock ``clk``. It works on 50 MHz, which is also same as the development board that you used in previous labs.
 + Outputs of Development Board:
     + This development board contains VGA port pins:  Line synchronization signal pin ``h_sync``, field synchronization signal pin ``v_sync``, and color data pins ``rgb``. The color data also follows the RGB565, which is same as the development board that you used in labs.
+
+![Schematic Diagram](SchematicDiagram/SchematicDiagram.png)
 
 1. Make sure that all your own modules are in the same folder and include the timescale. For example, you can add `` `timescale 1ns / 1ns`` at the beginning of all your module files. 
 2. Make sure that your modules do not use the IP cores!!! If you use IP cores, implement your own module to replace them.
