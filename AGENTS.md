@@ -46,9 +46,12 @@ Simple-VGA-Simulator/
 
 ### System Requirements
 - Linux (Ubuntu 22.04 LTS recommended)
+- macOS (15.0+ Sequoia, tested on Apple Silicon/Darwin 25.0.0)
 - Windows users need VirtualBox with Ubuntu or WSL2 with X11 forwarding
 
 ### Required Packages
+
+#### Ubuntu / Linux
 ```bash
 sudo apt-get update
 sudo apt-get install build-essential
@@ -57,6 +60,24 @@ sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
 ```
 
 For users in mainland China, use Tsinghua mirror for apt sources.
+
+#### macOS
+```bash
+# Install Xcode Command Line Tools (includes gcc, make, OpenGL/GLUT)
+xcode-select --install
+
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Verilator
+brew install verilator
+```
+
+**macOS Notes:**
+- macOS uses Apple's Clang compiler instead of GCC (invoked via `gcc` alias)
+- OpenGL/GLUT frameworks are included with Xcode Command Line Tools
+- The `run_simulation.sh` script automatically detects macOS and uses the correct linking flags (`-framework GLUT -framework OpenGL` instead of `-lglut -lGLU -lGL`)
+- You may see deprecation warnings for OpenGL/GLUT APIs on macOS 10.9+ and 10.14+ respectively; these are harmless
 
 ## Build and Run Commands
 
@@ -97,6 +118,7 @@ The `run_simulation.sh` script performs the following steps:
    verilator -Wall --cc --exe -I<rtl_path> simulator.cpp DevelopmentBoard.v \
        -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread
    ```
+   > On macOS, the script automatically uses `-framework GLUT -framework OpenGL` instead.
 3. **Step 2: Compilation** - Builds executable using make:
    ```bash
    make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
@@ -271,8 +293,10 @@ Expected: Blue ball on purple background. Use `s`/`d`/`f`/`g` keys to move the b
 
 | Error | Solution |
 |-------|----------|
-| `verilator: command not found` | Install verilator: `sudo apt install verilator` |
-| `GL/glut.h: No such file` | Install OpenGL/GLUT: `sudo apt install libglu1-mesa-dev freeglut3-dev mesa-common-dev` |
+| `verilator: command not found` | **Ubuntu:** `sudo apt install verilator`<br>**macOS:** `brew install verilator` |
+| `GL/glut.h: No such file` | **Ubuntu:** `sudo apt install libglu1-mesa-dev freeglut3-dev mesa-common-dev`<br>**macOS:** OpenGL/GLUT is included with Xcode Command Line Tools. Run `xcode-select --install` |
+| `GLUT Fatal Error: internal error: NSInternalInconsistencyException` | **macOS only:** GLUT must run on the main thread. Ensure you are using the latest `simulator.cpp` which creates a separate thread for simulation while running GLUT on the main thread. |
+| `std::atomic` initialization errors | **macOS only:** macOS libc++ has stricter requirements for atomic initialization. The code has been updated to use `.store()` method instead of aggregate initialization. |
 | `obj_dir/VDevelopmentBoard.mk: No such file` | Verilation failed. Check Verilog syntax and include paths |
 | Black screen / no display | Check VGA timing parameters match specification |
 | Buttons not responding | Ensure button inputs are active-low (0 when pressed) |
@@ -283,6 +307,23 @@ If using WSL on Windows, ensure X11 forwarding is configured:
 1. Install VcXsrv or Xming on Windows host
 2. Set `DISPLAY` environment variable in WSL
 3. Allow X11 forwarding through Windows Firewall
+
+### macOS Specific Notes
+
+#### Deprecation Warnings
+On macOS 10.9+ and 10.14+, you will see deprecation warnings for GLUT and OpenGL APIs. These are expected and can be safely ignored. Apple has deprecated these APIs in favor of Metal, but they remain fully functional.
+
+To suppress these warnings, you can add the following to the compiler flags in the Makefile (inside `obj_dir/VDevelopmentBoard.mk`):
+```makefile
+CXXFLAGS += -DGL_SILENCE_DEPRECATION
+```
+
+#### Thread Model
+macOS requires GLUT to run on the main thread. The `simulator.cpp` has been restructured to:
+- Run GLUT (`glutMainLoop`) on the **main thread**
+- Run the Verilator simulation loop on a **background thread**
+
+This is the opposite of the original Linux design but works correctly on both platforms.
 
 ## Generated Artifacts
 

@@ -2,9 +2,17 @@
 
 This simulator provides the VGA displayer, a reset button, 4 custom buttons, and 5 LEDs. The reset button is the key "a" on the keyboard. These 4 custom buttons are keys "s", "d", "f", "g" on the keyboard.
 
+## Platform Support
+
+This simulator supports:
+- **Linux** (Ubuntu 20.04/22.04 LTS recommended)
+- **macOS** (15.0+ Sequoia, tested on Apple Silicon/Darwin 25.0.0)
+
 ## How to use
 
-This simulator requires ["Verilator"](https://www.veripool.org/verilator/) and OpenGL. You can simply install them in Ubuntu by using following commands:
+This simulator requires ["Verilator"](https://www.veripool.org/verilator/) and OpenGL.
+
+### Ubuntu / Linux
 
 ```bash
 sudo apt-get update
@@ -12,6 +20,23 @@ sudo apt-get install build-essential
 sudo apt-get install verilator
 sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
 ```
+
+### macOS
+
+Install Xcode Command Line Tools and Homebrew, then install Verilator:
+
+```bash
+# Install Xcode Command Line Tools (includes OpenGL/GLUT framework)
+xcode-select --install
+
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Verilator
+brew install verilator
+```
+
+> **Note:** On macOS, OpenGL/GLUT is deprecated but still functional. You may see deprecation warnings during compilation, which can be safely ignored.
 
 All you need are ``DevelopmentBoard.v``, ``run_simulation.sh`` and ``simulator.cpp`` files in the ``sim`` folder. When you need to run your simulation, you can follow these steps:
 
@@ -24,5 +49,4 @@ All you need are ``DevelopmentBoard.v``, ``run_simulation.sh`` and ``simulator.c
     ./run_simulation.sh ../RTL
     ```
 
-You can try the example by going to ``Example/sim`` folder and then runing the above command. You will see a ball in the center of the VGA screen. When you press "a", all system will be reset. When you press "s", the ball will go up, and the LED 1 will be turned on. When you press "d", the ball will go down, and LED 2 will be turned on. When you press "f", the ball will go left, and LED 3 will be turned on. When you press "g", the ball will go right, and LED 4 will be turned on. 
 
