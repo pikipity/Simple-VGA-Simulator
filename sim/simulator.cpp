@@ -1,5 +1,10 @@
 //#include <verilated.h>          // defines common routines
+// Platform-specific GLUT header
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
 #include <GL/glut.h>
+#endif
 #include <thread>
 #include <iostream>
 #include <atomic>

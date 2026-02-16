@@ -2,6 +2,19 @@
 
 # 用法: ./run_simulation.sh [include_directory_path]
 
+# 检测操作系统
+OS=$(uname -s)
+echo "Detected OS: $OS"
+
+# 根据操作系统设置链接参数
+if [ "$OS" = "Darwin" ]; then
+    # macOS
+    LDFLAGS="-LDFLAGS -framework -LDFLAGS GLUT -LDFLAGS -framework -LDFLAGS OpenGL"
+else
+    # Linux
+    LDFLAGS="-LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread"
+fi
+
 # 获取脚本所在的绝对路径
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
@@ -58,7 +71,7 @@ fi
 # 第一步：使用Verilator编译Verilog代码
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
-VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread)
+VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS)
 VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
@@ -68,8 +81,12 @@ if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     echo "Error: Verilator compilation failed!"
     echo "Possible causes:"
     echo "1. Not provide correct path of RTLs"
-    echo "2. Verilator is not installed (install command: sudo apt install build-essential verilator)"
-    echo "3. OpenGL/GLUT is not installed (install command: sudo apt install libglu1-mesa-dev freeglut3-dev mesa-common-dev)"
+    echo "2. Verilator is not installed"
+    echo "   - Ubuntu: sudo apt install build-essential verilator"
+    echo "   - macOS:  brew install verilator"
+    echo "3. OpenGL/GLUT is not installed"
+    echo "   - Ubuntu: sudo apt install libglu1-mesa-dev freeglut3-dev mesa-common-dev"
+    echo "   - macOS:  OpenGL/GLUT is included with Xcode Command Line Tools (xcode-select --install)"
     echo "4. The code contains syntax errors"
     exit 1
 fi
