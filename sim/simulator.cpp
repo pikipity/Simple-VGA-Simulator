@@ -58,7 +58,7 @@ float pixel_h = 2.0 / ACTIVE_HEIGHT * 0.8f;
 bool restart_triggered = false;
 
 // 在全局变量区域添加LED状态变量
-std::atomic<int> leds_state[5] = {1, 1, 1, 1, 1}; // 初始状态为灭(1)
+std::atomic<int> leds_state[5]; // 初始状态在 reset() 中设置
 
 const int WINDOW_WIDTH = 800;  // 窗口宽度
 const int WINDOW_HEIGHT = 600; // 窗口高度
@@ -158,7 +158,7 @@ void glutTimer(int t) {
 }
 
 // handle up/down/left/right arrow keys
-std::atomic<int> keys[5] = {1, 1, 1, 1, 1};
+std::atomic<int> keys[5];
 // int key_prev_state[5] = {1, 1, 1, 1, 1};
 void keyPressed(unsigned char key, int x, int y) {
     switch(key) {
@@ -276,11 +276,11 @@ void apply_input() {
 
 void update_leds(){
     // 更新LED状态
-    leds_state[0] = display->led1;
-    leds_state[1] = display->led2;
-    leds_state[2] = display->led3;
-    leds_state[3] = display->led4;
-    leds_state[4] = display->led5;
+    leds_state[0].store(display->led1);
+    leds_state[1].store(display->led2);
+    leds_state[2].store(display->led3);
+    leds_state[3].store(display->led4);
+    leds_state[4].store(display->led5);
 }
 
 void display_eval(){
@@ -341,8 +341,13 @@ void reset() {
 	
 	// 重置按键状态
     for (int i = 0; i < 5; i++) {
-        keys[i] = 1;
+        keys[i].store(1);
         // key_prev_state[i] = 1;
+    }
+	
+	// 重置LED状态
+    for (int i = 0; i < 5; i++) {
+        leds_state[i].store(1);
     }
 	 
 	 // 清除重启标志
@@ -395,13 +400,11 @@ void sample_pixel() {
 
 
 
-int main(int argc, char** argv) {
-    // create a new thread for graphics handling
-    thread thread(graphics_loop, argc, argv);
+
+// simulation thread function
+void simulation_loop() {
     // wait for graphics initialization to complete
     while(!gl_setup_complete);
-
-    Verilated::commandArgs(argc, argv);   // remember args
 
     // create the model
     display = new VDevelopmentBoard;
@@ -411,16 +414,12 @@ int main(int argc, char** argv) {
 
     // cycle accurate simulation loop
     while (!Verilated::gotFinish()) {
-		 if (restart_triggered) {
-        reset();
-    }
-		
+        if (restart_triggered) {
+            reset();
+        }
+        
         tick();
-        // update_leds();
-        // apply_input(); // inputs are pulsed once each new frame
         tick();
-        // update_leds();
-        // apply_input(); // inputs are pulsed once each new frame
         // the clock frequency of VGA is half of that of the whole model
         // so we sample from VGA every other clock
         sample_pixel();
@@ -430,3 +429,16 @@ int main(int argc, char** argv) {
     delete display;
 }
 
+int main(int argc, char** argv) {
+    Verilated::commandArgs(argc, argv);   // remember args
+
+    // On macOS, GLUT must run on the main thread
+    // So we create a thread for simulation instead
+    thread sim_thread(simulation_loop);
+
+    // Run GLUT on the main thread
+    graphics_loop(argc, argv);
+
+    // Wait for simulation thread to finish (if ever)
+    sim_thread.join();
+}
