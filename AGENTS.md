@@ -495,6 +495,367 @@ mapping_frame.place(in_=main_frame, anchor="c", relx=.5, rely=.5)
 | I-06 | 鼠标滚轮支持不完善 | 原使用 `bind_all` 捕获全局事件，且不支持 Linux；修复后使用 `canvas.bind()` 并添加跨平台支持（Windows/macOS/Linux） | ✅ 已修复 |
 
 
+### Simulator (sim/simulator.cpp)
+
+**当前状态**: ⚠️ **存在数据竞争等 Bug，需要修复**
+
+Simulator 是核心 C++ 仿真程序，使用 Verilator 编译 Verilog 并通过 OpenGL/GLUT 显示。经代码审查发现多处线程安全问题。
+
+#### 1. 确定会产生 Bug 的问题（需立即修复）
+
+##### 🔴 P0 - 原子数组未初始化
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第61行 `leds_state[5]`，第161行 `keys[5]` |
+| **问题** | `std::atomic<int>` 默认构造函数不初始化，读取时得到随机垃圾值 |
+| **Bug 表现** | LED 随机闪烁，按键初始状态随机（可能表现为"虚拟按键按下"） |
+| **修复方案** | 声明时初始化：`std::atomic<int> keys[5] = {{1}, {1}, {1}, {1}, {1}};` |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+```cpp
+// 修改前
+std::atomic<int> leds_state[5]; // 初始状态在 reset() 中设置
+std::atomic<int> keys[5];
+
+// 修改后
+std::atomic<int> leds_state[5] = {{1}, {1}, {1}, {1}, {1}}; // 初始化为未激活状态
+std::atomic<int> keys[5] = {{1}, {1}, {1}, {1}, {1}}; // 初始化为未激活状态
+```
+**测试结果：** ✅ 编译通过，执行正常
+
+##### 🔴 P0 - `gl_setup_complete` 非原子类型
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第30行声明，第215行写入，第407行读取 |
+| **问题** | 多线程访问非原子 `bool`，存在数据竞争 |
+| **Bug 表现** | 1) 编译器优化可能导致无限循环；2) CPU 缓存不一致导致死等 |
+| **修复方案** | 改为 `std::atomic<bool>`，使用 `memory_order_release/acquire` |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+```cpp
+// 修改前
+bool gl_setup_complete = false;
+// ...
+gl_setup_complete = true;
+// ...
+while(!gl_setup_complete);
+
+// 修改后
+std::atomic<bool> gl_setup_complete{false};
+// ...
+gl_setup_complete.store(true, std::memory_order_release);
+// ...
+while (!gl_setup_complete.load(std::memory_order_acquire)) {
+    std::this_thread::yield();
+}
+```
+**测试结果：** ✅ 编译通过，执行正常
+**选择方案：** 方案B（`release/acquire` 内存序），性能最优且语义正确
+
+##### 🔴 P0 - `restart_triggered` 非原子类型
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第58行声明，第167行写入，第417行读取，第354行写入 |
+| **问题** | 主线程写入、模拟线程读取，无同步机制 |
+| **Bug 表现** | 1) 重启信号丢失（缓存不一致）；2) 竞态条件导致重复重置 |
+| **修复方案** | 改为 `std::atomic<bool>`，使用 `exchange()` 原子读取并清除 |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+```cpp
+// 修改前
+bool restart_triggered = false;
+// ... 写入
+restart_triggered = true;
+// ... 读取并清除（非原子，有竞态窗口）
+if (restart_triggered) {
+    reset();
+}
+restart_triggered = false;
+
+// 修改后
+std::atomic<bool> restart_triggered{false};
+// ... 写入
+restart_triggered.store(true, std::memory_order_release);
+// ... 原子读取并清除（无竞态窗口）
+if (restart_triggered.exchange(false, std::memory_order_acquire)) {
+    reset();
+}
+```
+**测试结果：** ✅ 编译通过，执行正常
+**选择方案：** 方案B（`exchange()`），原子性读取并清除，彻底消除竞态窗口
+
+##### 🔴 P1 - `graphics_buffer` 无线程同步
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第50行声明，第392-394行写入，第99行读取 |
+| **问题** | 模拟线程写入、GLUT 渲染线程读取，无同步机制 |
+| **Bug 表现** | 1) 画面撕裂（读取半新半旧帧）；2) RGB 通道不一致（颜色错误） |
+| **修复方案** | 实现双缓冲机制，使用原子指针交换 |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+```cpp
+// 修改前 - 单缓冲，无同步
+float graphics_buffer[ACTIVE_WIDTH][ACTIVE_HEIGHT][3] = {};
+
+// 修改后 - 双缓冲，原子指针交换
+static float buffer_a[ACTIVE_WIDTH * ACTIVE_HEIGHT * 3] = {};
+static float buffer_b[ACTIVE_WIDTH * ACTIVE_HEIGHT * 3] = {};
+static std::atomic<float*> write_buffer{buffer_a};  // 模拟线程写入
+static std::atomic<float*> read_buffer{buffer_b};   // GLUT线程读取
+static std::atomic<bool> buffer_swap_pending{false}; // 新帧就绪标记
+
+// 模拟线程 (sample_pixel): 写入 write_buffer，v_sync时标记交换
+// GLUT线程 (render): 检查标记，原子交换指针，读取 read_buffer
+```
+**选择方案：** 方案B（双缓冲+原子指针交换）
+- 零拷贝交换，性能最优
+- 无互斥锁，读写互不阻塞
+- 垂直同步触发交换，避免画面撕裂
+**测试结果：** ✅ 编译通过，执行正常
+
+##### 🟡 P2 - `glutMainLoop()` 不返回导致线程泄漏
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第219行调用，第443行 `join()` |
+| **问题** | 某些 GLUT 实现窗口关闭时直接调用 `exit()`，不返回 |
+| **Bug 表现** | `sim_thread.join()` 永不执行，资源未释放，模拟线程被强制终止 |
+| **修复方案** | 添加全局退出标志 + `glutCloseFunc` 回调 |
+| **状态** | ⚠️ **无法修复 - macOS GLUT 限制** |
+
+**问题分析：**
+- Linux (freeglut): 支持 `glutMainLoopEvent()` 和 `glutCloseFunc()`，可轮询退出
+- macOS (原生 GLUT): **不支持** `glutMainLoopEvent()`，也不支持 `glutCloseFunc()`
+- Windows (freeglut): 支持上述 API
+
+**尝试的修复方案：**
+方案A-1 使用轮询方式：
+```cpp
+while (!should_exit) {
+    glutMainLoopEvent();  // ← macOS 不支持
+    std::this_thread::sleep_for(16ms);
+}
+```
+
+**结论：** 在 macOS 上无法优雅解决此问题。由于这是 P1（非致命）问题，进程退出时 OS 会回收资源，实际影响有限。建议在 macOS 上**跳过此修复**，或接受此限制。
+
+**如果未来需要彻底修复，方案：**
+1. 改用 GLFW（支持显式事件轮询）
+2. 使用平台条件编译：Linux/Windows 用轮询，macOS 保持现状
+
+#### 2. 可选改进项（建议修复）
+
+##### 🟡 P2 - `wait_10ns()` 实现不可靠 → Wall Clock 实时同步
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第16-20行 |
+| **当前问题** | 空循环实现，时序不准确，受 CPU 频率影响 |
+| **改进方案** | 实现 `RealTimeSync` 类，基于挂钟时间同步 |
+| **适用场景** | 需要真实时序模拟（如 VGA 时序合规性验证） |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+```cpp
+// 修改前 - 空循环
+void wait_10ns() {
+    for (volatile int i = 0; i < 100; ++i) {}
+}
+
+// 修改后 - Wall Clock 同步
+class RealTimeSync {
+    std::chrono::steady_clock::time_point epoch;
+    uint64_t sim_cycles = 0;
+    static constexpr uint64_t NS_PER_CYCLE = 20;  // 50MHz = 20ns/cycle
+    
+public:
+    RealTimeSync() : epoch(std::chrono::steady_clock::now()) {}
+    
+    void tick() {
+        sim_cycles++;
+        uint64_t target_ns = sim_cycles * NS_PER_CYCLE;
+        
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            now - epoch).count();
+        
+        if (target_ns > elapsed_ns) {
+            // 忙等待直到真实时间追上仿真时间
+            auto target = now + std::chrono::nanoseconds(target_ns - elapsed_ns);
+            while (std::chrono::steady_clock::now() < target) {
+                #if defined(__x86_64__)
+                __builtin_ia32_pause();  // 降低功耗
+                #endif
+            }
+        } else if (elapsed_ns - target_ns > 1000000) {
+            // 滞后超过1ms时输出警告
+            std::cerr << "Simulation lag: " << (elapsed_ns - target_ns) << "ns\n";
+        }
+    }
+};
+
+static RealTimeSync g_sync;
+void wait_10ns() { g_sync.tick(); }
+```
+**选择方案：** 方案C（Wall Clock）
+- 精确同步真实时间和仿真时间
+- 可检测电脑性能是否足够
+- x86_64 使用 `pause` 指令降低功耗
+**测试结果：** ✅ 编译通过，执行正常，实时同步工作
+
+##### 🟢 P3 - `display` 原始指针异常不安全
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第22行声明，第410行 `new`，第429行 `delete` |
+| **问题** | 异常抛出时 `delete` 不会执行，可能内存泄漏 |
+| **改进方案** | 改为 `std::unique_ptr<VDevelopmentBoard>` |
+| **状态** | ⚠️ **无法修复 - 与 P1 冲突** |
+
+**问题分析：**
+使用 `std::unique_ptr` 确实更安全，但在 macOS 上存在致命问题：
+
+1. `glutMainLoop` 在 macOS 上可能直接调用 `exit()` 终止程序
+2. 程序退出时会调用全局变量 `display` (unique_ptr) 的析构函数
+3. 同时 `simulation_loop` 线程可能还在运行并访问 `display`
+4. 导致 **段错误**（主线程释放内存，子线程正在访问）
+
+**测试验证：**
+```cpp
+std::unique_ptr<VDevelopmentBoard> display;
+// ...
+display.reset(new VDevelopmentBoard());
+// ...
+display->final();
+display.reset();
+```
+结果：运行一段时间后 `Segmentation fault: 11`
+
+**原始代码为什么安全：**
+原始代码使用原始指针，不主动释放内存。程序退出时即使有内存泄漏，也不会触发段错误。
+
+**结论：** 在 P1（线程泄漏）无法修复的前提下，P3 也无法安全实现。保持原始指针实现。
+
+##### 🟢 P3 - 删除注释代码
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | `discard_input()` 函数、旧按键处理逻辑、调试代码等 |
+| **问题** | 约 100+ 行注释代码影响可读性 |
+| **改进方案** | 删除旧代码，保留功能性注释 |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+- 删除 `discard_input()` 函数（已注释）
+- 删除 `apply_input()` 内的旧按键边缘检测逻辑（已注释）
+- 删除 `sample_pixel()` 内的调试代码（已注释）
+- 删除 `tick()` 内的旧上升沿代码（已注释）
+- 清理 `reset()` 内的旧注释和未使用的 `key_prev_state` 引用
+- 统一注释风格为中英文混合（保留中文注释用于教学目的）
+**测试结果：** ✅ 编译通过，执行正常
+
+##### 🟢 P3 - RGB565 转换优化
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 第392-394行 |
+| **问题** | 每次像素 3 次浮点除法，效率低 |
+| **改进方案** | 预计算查找表 `RGB5_TO_FLOAT[32]` 和 `RGB6_TO_FLOAT[64]` |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+```cpp
+// 修改前 - 每次像素 3 次浮点除法
+buf[idx] = float((rgb & 0xF800) >> 11) / 31.0f;
+buf[idx + 1] = float((rgb & 0x07E0) >> 5) / 63.0f;
+buf[idx + 2] = float((rgb & 0x001F)) / 31.0f;
+
+// 修改后 - 查找表 O(1) 访问
+static float RGB5_TO_FLOAT[32];   // 5-bit -> float
+static float RGB6_TO_FLOAT[64];   // 6-bit -> float
+
+// 初始化（只需一次）
+void init_rgb_lookup_tables() {
+    for (int i = 0; i < 32; i++) RGB5_TO_FLOAT[i] = float(i) / 31.0f;
+    for (int i = 0; i < 64; i++) RGB6_TO_FLOAT[i] = float(i) / 63.0f;
+}
+
+// 像素转换
+buf[idx] = RGB5_TO_FLOAT[(rgb >> 11) & 0x1F];      // Red
+buf[idx + 1] = RGB6_TO_FLOAT[(rgb >> 5) & 0x3F];   // Green
+buf[idx + 2] = RGB5_TO_FLOAT[rgb & 0x1F];          // Blue
+```
+**优化效果：** 消除 90 万次/帧浮点除法，替换为缓存友好的查表
+**选择方案：** 方案A（预计算查找表）
+**测试结果：** ✅ 编译通过，执行正常
+
+##### 🟢 P3 - Tab/空格缩进混用
+
+| 项目 | 详情 |
+|------|------|
+| **位置** | 多处（常量定义、case语句、空行） |
+| **问题** | Tab 和空格混用，不同编辑器显示不一致 |
+| **改进方案** | 统一使用 4 空格缩进 |
+| **状态** | ✅ **已修复** |
+
+**修复日期：** 2026-02-17
+**修复内容：**
+- 将所有 Tab 字符 (`\t`) 替换为 4 个空格
+- 清理多余的连续空行
+- 统一常量定义的对齐方式
+**测试结果：** ✅ 编译通过，执行正常
+
+#### 3. 跨平台兼容性说明
+
+| 平台 | 状态 | 备注 |
+|------|------|------|
+| **macOS Intel (x86_64)** | ✅ 完全支持 | `__builtin_ia32_pause()` 优化 |
+| **macOS Apple Silicon (ARM64)** | ✅ 完全支持 | `__asm__("yield")` 优化 |
+| **Linux (x86_64)** | ✅ 完全支持 | `__builtin_ia32_pause()` 优化 |
+| **Linux (ARM64)** | ✅ 支持 | `__asm__("yield")` 优化 |
+| **Windows (WSL2)** | ✅ 支持 | 等同于 Linux |
+
+**跨平台修复记录：**
+```cpp
+// 忙等待循环的跨平台优化
+while (std::chrono::steady_clock::now() < target) {
+    #if defined(__x86_64__)
+        __builtin_ia32_pause();           // Intel/AMD x86_64
+    #elif defined(__aarch64__) || defined(_M_ARM64)
+        __asm__ __volatile__("yield");    // ARM64 (Apple Silicon, etc.)
+    #endif
+}
+```
+
+#### 4. 修复优先级总结
+
+| 优先级 | 问题 | 修复难度 | 不修复的后果 |
+|--------|------|----------|--------------|
+| 🔴 P0 | 原子数组未初始化 | 极低 | 随机闪烁/按键异常 |
+| 🔴 P0 | `gl_setup_complete` 非原子 | 低 | 程序随机卡住 |
+| 🔴 P0 | `restart_triggered` 非原子 | 低 | 重启功能失效 |
+| 🔴 P1 | `graphics_buffer` 无同步 | 中 | 画面撕裂/颜色错误 |
+| 🟡 P2 | `glutMainLoop` 不返回 | 中 | 线程泄漏 |
+| 🟡 P2 | Wall Clock 实时同步 | 低 | 时序不准确 |
+| 🟢 P3 | 其他代码质量问题 | 低-中 | 维护困难 |
+
+---
+
 ## References
 
 - [Verilator Documentation](https://www.veripool.org/verilator/)
