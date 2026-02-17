@@ -712,8 +712,7 @@ Simple-VGA-Simulator/
 ├── sim/                          # 核心模拟器文件（你需要复制这些）/ Core simulator files (you need to copy these)
 │   ├── DevelopmentBoard.v        # 开发板顶层模块 / Development board top module
 │   ├── simulator.cpp             # C++ 仿真主程序 / C++ simulation main program
-│   ├── run_simulation.sh         # 运行脚本 / Run script
-│   └── PinPlanner.py             # 引脚规划工具（可选）/ Pin planning tool (optional)
+│   └── run_simulation.sh         # 运行脚本 / Run script
 ├── Example/                      # 示例项目 / Example projects
 │   ├── Example_1_ColorBar/       # 示例1：彩色条 / Example 1: Color bars
 │   └── Example_2_BallMove/       # 示例2：移动球 / Example 2: Moving ball
@@ -745,6 +744,10 @@ Simple-VGA-Simulator/
 | 刷新率 / Refresh Rate | 60 Hz | 标准刷新率 / Standard refresh |
 | 颜色格式 / Color Format | RGB565 | 16位彩色 / 16-bit color |
 | 按键逻辑 / Button Logic | 低电平有效 / Active Low | 按下为 0，松开为 1 / 0 when pressed, 1 when released |
+
+**开发板原理图 / Development Board Schematic:**
+
+![Schematic Diagram](SchematicDiagram/SchematicDiagram.png)
 
 **键盘映射 / Keyboard Mapping:**
 
@@ -875,24 +878,6 @@ MyVGA MyVGA_inst(
   **Do not modify** the `DevelopmentBoard` module port declarations (input/output section)
 - 只需要修改实例化部分 / Only modify the instantiation section
 - 确保你的模块端口名与连接的信号对应 / Ensure your module port names match the connected signals
-
-#### 使用 PinPlanner.py（可选）/ Use PinPlanner.py (Optional)
-
-如果你的模块有很多端口，可以使用图形化工具自动生成 `DevelopmentBoard.v`：  
-If your module has many ports, you can use the graphical tool to auto-generate `DevelopmentBoard.v`:
-
-```bash
-# 进入模拟器目录 / Enter simulator directory
-cd ~/Projects/Simple-VGA-Simulator/sim
-
-# 运行工具 / Run tool
-python3 PinPlanner.py
-```
-
-使用步骤：/ Usage steps:
-1. 点击 "Browse Verilog File" 选择你的顶层模块 / Click "Browse Verilog File" to select your top module
-2. 在下拉菜单中映射信号 / Map signals in dropdown menus
-3. 点击 "Save Pins" 生成文件 / Click "Save Pins" to generate file
 
 ### 6.4 运行模拟器 / Running the Simulator
 
