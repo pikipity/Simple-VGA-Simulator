@@ -69,10 +69,18 @@ class PinPlanner:
         canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
-        # Enable mouse wheel scrolling
+        # Enable mouse wheel scrolling (cross-platform)
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            # Windows: delta = +/-120, macOS: delta = +/-1
+            if abs(event.delta) < 120:
+                canvas.yview_scroll(int(-1 * event.delta), "units")  # macOS
+            else:
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")  # Windows
+        
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        # Linux support (X11 uses Button-4/5 instead of MouseWheel)
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
         
         # Mapping frame content
         ttk.Label(scrollable_frame, text="Development Board Pins", font=('Arial', 10, 'bold')).grid(row=0, column=0, pady=(0, 5), padx=10)

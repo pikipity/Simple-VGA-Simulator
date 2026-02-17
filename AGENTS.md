@@ -489,6 +489,11 @@ mapping_frame.place(in_=main_frame, anchor="c", relx=.5, rely=.5)
 - 当模块信号数量很多时，下拉框列表超出屏幕高度，没有滚动条
 - 建议改用 `grid()` 或 `pack()` 布局，并添加 `Canvas` + `Scrollbar` 支持
 
+**修复后的附加改进：**
+| ID | 问题 | 描述 | 状态 |
+|----|------|------|------|
+| I-06 | 鼠标滚轮支持不完善 | 原使用 `bind_all` 捕获全局事件，且不支持 Linux；修复后使用 `canvas.bind()` 并添加跨平台支持（Windows/macOS/Linux） | ✅ 已修复 |
+
 
 ## References
 
