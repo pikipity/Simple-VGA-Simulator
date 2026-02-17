@@ -377,6 +377,41 @@ Simple-VGA-Simulator/
 └── Example/                # 示例项目
 ```
 
+### Git 提交规范
+
+**规则：仅在用户明确要求时执行 `git commit`**
+
+- 完成修改后**不要**自动执行 `git commit`
+- 等待用户明确说 "commit" 或 "提交" 后再执行
+- 在提交前，先使用 `git status` 或 `git diff` 向用户展示变更内容
+- 确认用户满意后再执行提交
+
+**原因：**
+- 避免在用户想要检查修改之前就提交
+- 给用户机会审查代码变更
+- 让用户控制提交时机和提交信息
+
+### Example 测试规范
+
+**规则：使用 Example 测试前，确保 Example/sim 下的文件是最新的**
+
+- 修改 `sim/simulator.cpp` 后，必须同步更新到 `Example/*/sim/simulator.cpp`
+- 测试前应检查文件是否一致：
+  ```bash
+  diff sim/simulator.cpp Example/Example_1_ColorBar/sim/simulator.cpp
+  diff sim/simulator.cpp Example/Example_2_BallMove/sim/simulator.cpp
+  ```
+- 如果不一致，先将最新文件复制到 Example 目录：
+  ```bash
+  cp sim/simulator.cpp Example/Example_1_ColorBar/sim/
+  cp sim/simulator.cpp Example/Example_2_BallMove/sim/
+  ```
+
+**原因：**
+- Example 目录是用户学习的主要入口
+- 过时的 simulator.cpp 会导致用户困惑和错误报告
+- 确保所有示例使用统一、最新的模拟器代码
+
 ## License
 
 MIT License - Copyright (c) 2025 Ze Wang
