@@ -838,14 +838,9 @@ void wait_10ns() { g_sync.tick(); }
 | **解决方案** | 添加 `reset()` 方法，在初始化完成后重置时间基准 |
 | **代码** | `void reset() { epoch = steady_clock::now(); sim_cycles = 0; }` |
 | **调用点** | `simulation_loop()` 中 `reset()` 之后调用 `g_sync.reset()` |
-
-**后续修复 - 滞后警告 spam：**
-
-| 项目 | 详情 |
-|------|------|
-| **问题** | 性能不足时，每毫秒都打印 "Simulation lag"，输出刷屏 |
-| **解决方案** | 添加 `lag_warning_issued` 标志，仅警告一次；提高阈值到 100ms |
 | **状态** | ✅ **已修复** |
+
+**说明：** 性能不足时 "Simulation lag" 刷屏是预期行为，让用户了解性能状况。如需减少输出，可降低仿真时钟频率或关闭实时同步。
 
 ##### 🟢 P3 - `display` 原始指针异常不安全
 
