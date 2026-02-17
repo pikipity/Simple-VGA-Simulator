@@ -812,10 +812,22 @@ end
 
 ### 6.3 配置 DevelopmentBoard.v / Configuring DevelopmentBoard.v
 
+> 💡 **两种配置方法 / Two Configuration Methods:**
+> 
+> **方法 A：使用 PinPlanner GUI 工具（推荐）/ Method A: Use PinPlanner GUI Tool (Recommended)**  
+> 适合初学者，可视化操作，自动完成信号映射。  
+> Suitable for beginners, visual operation, automatic signal mapping.
+> 
+> **方法 B：手动编辑 / Method B: Manual Editing**  
+> 适合熟悉 Verilog 的用户，直接修改代码。  
+> Suitable for users familiar with Verilog, direct code modification.
+
+---
+
 #### 步骤 1：复制文件 / Step 1: Copy Files
 
-从 `Simple-VGA-Simulator/sim/` 复制三个文件到你的 `sim/` 文件夹：  
-Copy three files from `Simple-VGA-Simulator/sim/` to your `sim/` folder:
+从 `Simple-VGA-Simulator/sim/` 复制**所有文件**到你的 `sim/` 文件夹：  
+Copy **all files** from `Simple-VGA-Simulator/sim/` to your `sim/` folder:
 
 ```bash
 # 假设你的项目在 ~/Projects/MyVGAProject
@@ -824,12 +836,54 @@ Copy three files from `Simple-VGA-Simulator/sim/` to your `sim/` folder:
 cd ~/Projects/MyVGAProject
 mkdir -p sim
 
-cp ~/Projects/Simple-VGA-Simulator/sim/DevelopmentBoard.v sim/
-cp ~/Projects/Simple-VGA-Simulator/sim/simulator.cpp sim/
-cp ~/Projects/Simple-VGA-Simulator/sim/run_simulation.sh sim/
+# 复制 sim 文件夹下的所有文件 / Copy all files from sim folder
+cp ~/Projects/Simple-VGA-Simulator/sim/* sim/
 ```
 
-#### 步骤 2：编辑 DevelopmentBoard.v / Step 2: Edit DevelopmentBoard.v
+这包括以下文件 / This includes:
+- `DevelopmentBoard.v` - 开发板顶层模块 / Development board top module
+- `simulator.cpp` - C++ 仿真主程序 / C++ simulation main program
+- `run_simulation.sh` - 运行脚本 / Run script
+- `PinPlanner.py` - GUI 配置工具（可选）/ GUI configuration tool (optional)
+
+#### 方法 A：使用 PinPlanner 配置（推荐）/ Method A: Configure with PinPlanner (Recommended)
+
+PinPlanner 是一个图形界面工具，帮助你自动完成信号映射。
+
+**运行 PinPlanner / Run PinPlanner:**
+
+```bash
+# 在项目目录中运行 / Run in your project directory
+cd ~/Projects/MyVGAProject
+python3 ~/Projects/Simple-VGA-Simulator/sim/PinPlanner.py
+```
+
+**操作步骤 / Operation Steps:**
+
+1. **Browse Verilog File**  
+   点击按钮选择你的顶层 Verilog 文件（如 `RTL/my_vga.v`）  
+   Click to select your top-level Verilog file (e.g., `RTL/my_vga.v`)
+
+2. **Map Signals**  
+   使用下拉菜单将模块信号映射到开发板引脚：  
+   Use dropdown menus to map module signals to board pins:
+   - `clk` → 连接到 `clk` (50MHz系统时钟)
+   - `reset_n` → 连接到 `reset` (复位)
+   - `hsync` → 连接到 `h_sync` (水平同步)
+   - `rgb` → 连接到 `rgb` (RGB565颜色)
+   - 其他按键/LED信号按需连接
+
+3. **Save Pins**  
+   点击保存按钮，选择 `sim/` 目录，生成 `DevelopmentBoard.v`  
+   Click Save, select `sim/` directory to generate `DevelopmentBoard.v`
+
+> ⚠️ **注意 / Note**:  macOS 用户在使用文件对话框时可能会看到 `IMKCFRunLoopWakeUpReliable` 警告，这是无害的系统消息，可以忽略。  
+> Mac users may see `IMKCFRunLoopWakeUpReliable` warning when using file dialogs. This is harmless and can be ignored.
+
+#### 方法 B：手动编辑 / Method B: Manual Editing
+
+如果你更喜欢直接编辑代码，可以手动修改 `DevelopmentBoard.v`：  
+If you prefer editing code directly, manually modify `DevelopmentBoard.v`:
 
 打开 `DevelopmentBoard.v`，找到类似以下的部分：/ Open `DevelopmentBoard.v`, find the section similar to:
 

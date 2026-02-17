@@ -23,6 +23,7 @@ This simulator uses **Verilator** to compile Verilog code into C++ and **OpenGL/
 ```
 Simple-VGA-Simulator/
 ├── sim/                          # Core simulator files (REQUIRED for use)
+│   ├── PinPlanner.py             # GUI tool for generating DevelopmentBoard.v
 │   ├── DevelopmentBoard.v        # Top-level Verilog wrapper module
 │   ├── simulator.cpp             # C++ simulation wrapper with OpenGL
 │   └── run_simulation.sh         # Build and run script
@@ -325,6 +326,36 @@ The build process creates an `obj_dir/` directory containing:
 - No network connectivity in the simulation
 - Input is limited to keyboard events captured by GLUT
 - Generated C++ code from Verilator should be reviewed for synthesis before FPGA deployment
+
+## Helper Tools
+
+### PinPlanner
+
+PinPlanner is a GUI tool for automatically generating `DevelopmentBoard.v` wrapper files.
+
+**Features:**
+- Parse Verilog module port definitions (ANSI style supported)
+- Visual signal mapping interface
+- Auto-generate `DevelopmentBoard.v` with proper signal connections
+
+**Usage:**
+```bash
+python3 sim/PinPlanner.py
+```
+
+**Workflow:**
+1. Click "Browse Verilog File" to select your top-level module
+2. Use dropdown menus to map module signals to development board pins
+3. Click "Save Pins" to save the generated `DevelopmentBoard.v`
+4. Copy the file to your project's `sim/` directory and run simulation
+
+**Technical Details:**
+- Parser supports `input`/`output`/`inout` directions
+- Supports multi-bit declarations `[15:0]`, multi-dimensional arrays
+- Newline-insensitive (commas, directions, types can be on separate lines)
+- Handles line comments `//` and block comments `/* */`
+
+> **Note for macOS users:** You may see `IMKCFRunLoopWakeUpReliable` warning when using file dialogs. This is a harmless system message and can be safely ignored.
 
 ## Development Conventions
 

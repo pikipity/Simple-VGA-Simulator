@@ -104,7 +104,7 @@ your_project/
 |------|--------|---------|
 | 1 | Organize code | Put all `.v` files in `RTL/` folder. **Note:** IP cores are not supported; replace them with your own designs. |
 | 2 | Add timescale | Add `` `timescale 1ns / 1ns`` to the beginning of all module files. |
-| 3 | Edit `DevelopmentBoard.v` | Instantiate your module and connect it to the `DevelopmentBoard` inputs/outputs. Do not modify the `DevelopmentBoard` module header. |
+| 3 | Configure `DevelopmentBoard.v` | **Option A (GUI):** Run `python3 /path/to/PinPlanner.py` to auto-generate.<br>**Option B (Manual):** Edit `DevelopmentBoard.v` to instantiate your module. |
 | 4 | Run simulation | Execute `./run_simulation.sh <rtl_path>` |
 
 **Example commands:**
@@ -122,6 +122,10 @@ your_project/
 ```
 Simple-VGA-Simulator/
 ├── sim/                    # Core simulation files (required)
+│   ├── PinPlanner.py       # GUI tool for auto-generating DevelopmentBoard.v
+│   ├── DevelopmentBoard.v  # Top-level wrapper template
+│   ├── simulator.cpp       # C++ simulation main
+│   └── run_simulation.sh   # Build & run script
 ├── Example/                # Example projects
 │   ├── Example_1_ColorBar/ # Static color bar demo
 │   └── Example_2_BallMove/ # Interactive ball movement
