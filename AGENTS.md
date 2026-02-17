@@ -25,8 +25,7 @@ Simple-VGA-Simulator/
 ├── sim/                          # Core simulator files (REQUIRED for use)
 │   ├── DevelopmentBoard.v        # Top-level Verilog wrapper module
 │   ├── simulator.cpp             # C++ simulation wrapper with OpenGL
-│   ├── run_simulation.sh         # Build and run script
-│   └── PinPlanner.py             # GUI tool for pin mapping (optional)
+│   └── run_simulation.sh         # Build and run script
 ├── Example/                      # Example projects
 │   ├── Example_1_ColorBar/       # Static color bar demo
 │   │   ├── RTL/                  # Verilog source files
@@ -249,22 +248,6 @@ parameter WHITE  = 16'hFFFF;
 parameter BLACK  = 16'h0000;
 ```
 
-## Helper Tool: PinPlanner.py
-
-A Python GUI tool (requires tkinter) to automatically generate `DevelopmentBoard.v` with proper signal mapping.
-
-### Usage
-```bash
-python3 PinPlanner.py
-```
-
-### Steps
-1. Click "Browse Verilog File" to select your top-level module
-2. Map development board pins to your module signals using dropdowns
-3. Click "Save Pins" to generate `DevelopmentBoard.v`
-
-**Note**: After generation, remember to add `timescale 1ns / 1ns` to all your module files.
-
 ## Testing Instructions
 
 ### Example 1: Color Bar Test
@@ -345,6 +328,15 @@ The build process creates an `obj_dir/` directory containing:
 ## License
 
 MIT License - Copyright (c) 2025 Ze Wang
+
+## TODO / Future Work
+
+- [ ] **PinPlanner.py**: A Python GUI tool (requires tkinter) to automatically generate `DevelopmentBoard.v` with proper signal mapping. Currently under development.
+  - Planned features:
+    - Browse and select top-level Verilog module
+    - Map development board pins to module signals via dropdowns
+    - Auto-generate `DevelopmentBoard.v` with proper signal mapping
+  - Usage (when completed): `python3 PinPlanner.py`
 
 ## References
 
