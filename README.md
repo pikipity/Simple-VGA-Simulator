@@ -1,28 +1,152 @@
-# Simple VGA Simulator of FPGA
+# Simple VGA Simulator
 
-This simulator provides the VGA displayer, a reset button, 4 custom buttons, and 5 LEDs. The reset button is the key "a" on the keyboard. These 4 custom buttons are keys "s", "d", "f", "g" on the keyboard.
+A Verilator-based FPGA VGA simulation environment for testing VGA controller designs without physical hardware.
 
-## How to use
+## Features
 
-This simulator requires ["Verilator"](https://www.veripool.org/verilator/) and OpenGL. You can simply install them in Ubuntu by using following commands:
+- 🖥️ **Virtual VGA Display** - 640×480 @ 60Hz, RGB565 16-bit color
+- 🎮 **5 Virtual Buttons** - Keyboard `a` (reset), `s/d/f/g` (custom)
+- 💡 **5 Virtual LEDs** - Visual output indicators
+- ⚡ **Real-time Simulation** - Based on Verilator + OpenGL with interactive debugging
+
+## Specifications
+
+| Parameter | Value |
+|-----------|-------|
+| Resolution | 640 × 480 |
+| Refresh Rate | 60 Hz |
+| Color Format | RGB565 (16-bit) |
+| System Clock | 50 MHz |
+
+## Platform Support
+
+| Platform | Version | Tested Environment |
+|----------|---------|-------------------|
+| Linux | Ubuntu 20.04+ | GCC + Verilator |
+| macOS | 15.0+ (Sequoia) | Apple Silicon, Clang |
+
+## Prerequisites
+
+### Ubuntu / Linux
 
 ```bash
+# Update package lists
 sudo apt-get update
+
+# Install build tools
 sudo apt-get install build-essential
+
+# Install Verilator
 sudo apt-get install verilator
+
+# Install OpenGL/GLUT libraries
 sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
 ```
 
-All you need are ``DevelopmentBoard.v``, ``run_simulation.sh`` and ``simulator.cpp`` files in the ``sim`` folder. When you need to run your simulation, you can follow these steps:
+**Verify installation:**
+```bash
+verilator --version  # Should show version 4.0+
+```
 
-1. Put all your modules in one folder. This simulator does not support IP cores. You need to replace IP cores with your own designs.
-2. Insert timescale `` `timescale 1ns / 1ns`` at the beginning of all your module files.
-3. Edit ``DevelopmentBoard.v``. Instantiate your module and connect your module to the inputs and outputs of the ``DevelopmentBoard`` module. You cannot edit the module head of the ``DevelopmentBoard`` module.
-4. Run ``run_simulation.sh`` with the path of your modules. For example, if the relative path of your modules is ``../RTL``, you can use the following command:
+### macOS
 
-    ```bash
-    ./run_simulation.sh ../RTL
-    ```
+1. **Install Xcode Command Line Tools** (includes OpenGL/GLUT)
+   ```bash
+   xcode-select --install
+   ```
 
-You can try the example by going to ``Example/sim`` folder and then runing the above command. You will see a ball in the center of the VGA screen. When you press "a", all system will be reset. When you press "s", the ball will go up, and the LED 1 will be turned on. When you press "d", the ball will go down, and LED 2 will be turned on. When you press "f", the ball will go left, and LED 3 will be turned on. When you press "g", the ball will go right, and LED 4 will be turned on. 
+2. **Install Homebrew** (if not already installed)
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
 
+3. **Install Verilator**
+   ```bash
+   brew install verilator
+   ```
+
+> ⚠️ **Note:** On macOS, OpenGL/GLUT is deprecated but still functional. You may see deprecation warnings during compilation, which can be safely ignored.
+
+## Quick Start
+
+### 1. Run Example (2-minute demo)
+
+```bash
+# Navigate to example
+cd Example/Example_1_ColorBar/sim
+
+# Make executable
+chmod +x run_simulation.sh
+
+# Run simulation
+./run_simulation.sh ../RTL
+```
+
+A VGA window will appear displaying color bars. Press `a` to reset.
+
+### 2. Use with Your Own Project
+
+**Setup:** Copy these 3 files from `sim/` to your project:
+
+```
+your_project/
+├── sim/
+│   ├── DevelopmentBoard.v   # Top-level wrapper
+│   ├── simulator.cpp        # C++ simulation main
+│   └── run_simulation.sh    # Build & run script
+└── RTL/                     # Your Verilog files
+    └── your_module.v
+```
+
+**Steps:**
+
+| Step | Action | Details |
+|------|--------|---------|
+| 1 | Organize code | Put all `.v` files in `RTL/` folder. **Note:** IP cores are not supported; replace them with your own designs. |
+| 2 | Add timescale | Add `` `timescale 1ns / 1ns`` to the beginning of all module files. |
+| 3 | Configure `DevelopmentBoard.v` | **Option A (GUI):** Run `python3 /path/to/PinPlanner.py` to auto-generate.<br>**Option B (Manual):** Edit `DevelopmentBoard.v` to instantiate your module. |
+| 4 | Run simulation | Execute `./run_simulation.sh <rtl_path>` |
+
+**Example commands:**
+
+```bash
+# If RTL is in parent directory
+./run_simulation.sh ../RTL
+
+# If RTL is in current directory
+./run_simulation.sh
+```
+
+## Project Structure
+
+```
+Simple-VGA-Simulator/
+├── sim/                    # Core simulation files (required)
+│   ├── PinPlanner.py       # GUI tool for auto-generating DevelopmentBoard.v
+│   ├── DevelopmentBoard.v  # Top-level wrapper template
+│   ├── simulator.cpp       # C++ simulation main
+│   └── run_simulation.sh   # Build & run script
+├── Example/                # Example projects
+│   ├── Example_1_ColorBar/ # Static color bar demo
+│   └── Example_2_BallMove/ # Interactive ball movement
+├── SchematicDiagram/       # Documentation diagrams
+└── Manual for EIE330 Students.md  # Detailed student manual
+```
+
+## Key Mappings
+
+| Key | Signal | Function | Active Level |
+|-----|--------|----------|--------------|
+| `a` | reset | System reset | Low (pressed = 0) |
+| `s` | B2 | Custom button 2 | Low |
+| `d` | B3 | Custom button 3 | Low |
+| `f` | B4 | Custom button 4 | Low |
+| `g` | B5 | Custom button 5 | Low |
+
+## License
+
+[MIT License](LICENSE) © 2025 Ze Wang
+
+## Student Manual Documentation
+
+- [Detailed Student Manual](Manual%20for%20EIE330%20Students.md) - Complete tutorial for EIE330 students

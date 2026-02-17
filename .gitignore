@@ -1,3 +1,4 @@
+.vscode/*
 **/sim/obj_dir/
 db/*
 incremental_db/*
@@ -135,3 +136,4 @@ simulator.cpp.bak
 vga_ctrl.v.bak
 vga_pic.v.bak
 SchematicDiagram/.$SchematicDiagram.drawio.bkp
+/sim/__pycache__
