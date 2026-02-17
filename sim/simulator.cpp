@@ -37,7 +37,7 @@ void cleanup_simulation() {
 class RealTimeSync {
     std::chrono::steady_clock::time_point epoch;
     uint64_t sim_cycles = 0;
-    static constexpr uint64_t NS_PER_CYCLE = 20;  // 50MHz = 20ns/cycle
+    static constexpr uint64_t NS_PER_CYCLE = 80;  // 12.5MHz = 80ns/cycle (reduced for better performance)
     
 public:
     RealTimeSync() : epoch(std::chrono::steady_clock::now()) {}
