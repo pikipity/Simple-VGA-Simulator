@@ -632,28 +632,107 @@ static std::atomic<bool> buffer_swap_pending{false}; // 新帧就绪标记
 | **位置** | 第219行调用，第443行 `join()` |
 | **问题** | 某些 GLUT 实现窗口关闭时直接调用 `exit()`，不返回 |
 | **Bug 表现** | `sim_thread.join()` 永不执行，资源未释放，模拟线程被强制终止 |
-| **修复方案** | 添加全局退出标志 + `glutCloseFunc` 回调 |
-| **状态** | ⚠️ **无法修复 - macOS GLUT 限制** |
+| **修复方案** | 添加全局退出标志 + `glutCloseFunc` 回调 + `atexit()` |
+| **状态** | ✅ **已修复（部分）- 跨平台方案** |
 
-**问题分析：**
-- Linux (freeglut): 支持 `glutMainLoopEvent()` 和 `glutCloseFunc()`，可轮询退出
-- macOS (原生 GLUT): **不支持** `glutMainLoopEvent()`，也不支持 `glutCloseFunc()`
-- Windows (freeglut): 支持上述 API
+**修复日期：** 2026-02-17
 
-**尝试的修复方案：**
-方案A-1 使用轮询方式：
+**跨平台实现方案：**
+
+| 平台 | GLUT 实现 | 处理方式 | 退出机制 |
+|------|-----------|----------|----------|
+| **macOS** | 原生 Cocoa | `atexit(cleanup_simulation)` | `exit(0)` 触发清理 |
+| **Linux** | freeglut | `glutCloseFunc()` + `glutLeaveMainLoop()` | 窗口关闭回调 |
+
+**关键代码实现：**
+
 ```cpp
-while (!should_exit) {
-    glutMainLoopEvent();  // ← macOS 不支持
-    std::this_thread::sleep_for(16ms);
+// 平台检测
+#if defined(__APPLE__)
+    #define PLATFORM_MACOS 1
+#else
+    #define PLATFORM_LINUX 1
+#endif
+
+// 全局退出标志和线程句柄
+static std::atomic<bool> g_quit_requested{false};
+static std::thread g_sim_thread;
+
+// 清理函数
+void cleanup_simulation() {
+    g_quit_requested.store(true, std::memory_order_release);
+    if (g_sim_thread.joinable()) {
+        g_sim_thread.join();
+    }
+}
+
+// Linux 窗口关闭回调
+#ifdef PLATFORM_LINUX
+void window_close_handler() {
+    cleanup_simulation();
+    glutLeaveMainLoop();
+}
+#endif
+
+// 键盘退出处理（ESC 或 Q）
+void keyPressed(unsigned char key, int x, int y) {
+    // ... 原有按键处理 ...
+    case 27:  // ESC
+    case 'q':
+    case 'Q':
+        cleanup_simulation();
+#if defined(PLATFORM_LINUX)
+        glutLeaveMainLoop();
+#elif defined(PLATFORM_MACOS)
+        exit(0);  // 触发 atexit
+#endif
+        break;
+}
+
+// graphics_loop 平台差异化设置
+void graphics_loop(int argc, char** argv) {
+    // ... GLUT 初始化 ...
+    
+#if defined(PLATFORM_MACOS)
+    atexit(cleanup_simulation);  // macOS: glutMainLoop 永不返回
+#elif defined(PLATFORM_LINUX)
+    #ifdef GLUT_ACTION_ON_WINDOW_CLOSE
+        glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+    #endif
+    #ifdef GLUT_HAS_CLOSE_CALLBACK
+        glutCloseFunc(window_close_handler);
+    #endif
+#endif
+
+    glutMainLoop();
 }
 ```
 
-**结论：** 在 macOS 上无法优雅解决此问题。由于这是 P1（非致命）问题，进程退出时 OS 会回收资源，实际影响有限。建议在 macOS 上**跳过此修复**，或接受此限制。
+**模拟线程退出检查：**
+```cpp
+void simulation_loop() {
+    // ... 初始化 ...
+    while (!Verilated::gotFinish() && !g_quit_requested.load(std::memory_order_acquire)) {
+        // 模拟循环
+    }
+    // 清理
+    display->final();
+    delete display;
+}
+```
 
-**如果未来需要彻底修复，方案：**
-1. 改用 GLFW（支持显式事件轮询）
-2. 使用平台条件编译：Linux/Windows 用轮询，macOS 保持现状
+**macOS 窗口关闭按钮问题：**
+
+**状态：** ✅ **已修复**
+
+原生 macOS GLUT 窗口关闭按钮默认可点击但无响应。通过添加 `atexit()` 处理程序，当用户：
+1. 点击窗口关闭按钮（触发 `exit()`）
+2. 按 `Cmd+Q`（触发 `exit()`）
+3. 按 `ESC` 或 `Q` 键（代码中调用 `exit(0)`）
+
+都会执行 `cleanup_simulation()`，优雅地停止模拟线程。
+
+**测试结果：** ✅ macOS 关闭按钮、ESC/Q 键退出均正常工作
 
 #### 2. 可选改进项（建议修复）
 
@@ -850,8 +929,9 @@ while (std::chrono::steady_clock::now() < target) {
 | 🔴 P0 | `gl_setup_complete` 非原子 | 低 | 程序随机卡住 |
 | 🔴 P0 | `restart_triggered` 非原子 | 低 | 重启功能失效 |
 | 🔴 P1 | `graphics_buffer` 无同步 | 中 | 画面撕裂/颜色错误 |
-| 🟡 P2 | `glutMainLoop` 不返回 | 中 | 线程泄漏 |
+| ✅ P2 | `glutMainLoop` 跨平台退出 | 中 | 线程泄漏（已修复）|
 | 🟡 P2 | Wall Clock 实时同步 | 低 | 时序不准确 |
+| ✅ P2 | macOS 窗口关闭按钮 | 低 | 无法退出（已修复）|
 | 🟢 P3 | 其他代码质量问题 | 低-中 | 维护困难 |
 
 ---

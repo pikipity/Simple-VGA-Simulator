@@ -1,9 +1,15 @@
 //#include <verilated.h>          // defines common routines
-// Platform-specific GLUT header
-#ifdef __APPLE__
-#include <GLUT/glut.h>
+// Platform-specific GLUT header and platform detection
+#if defined(__APPLE__)
+    #define PLATFORM_MACOS 1
+    #include <GLUT/glut.h>
 #else
-#include <GL/glut.h>
+    #define PLATFORM_LINUX 1
+    #include <GL/glut.h>
+    // freeglut extensions for window close callback
+    #ifdef GLUT_API_VERSION
+        #include <GL/freeglut_ext.h>
+    #endif
 #endif
 #include <thread>
 #include <iostream>
@@ -13,6 +19,18 @@
 #include "VDevelopmentBoard.h"            // from Verilating "display.v"
 
 using namespace std;
+
+// Cross-platform quit flag and global thread handle
+static std::atomic<bool> g_quit_requested{false};
+static std::thread g_sim_thread;
+
+// Cleanup function called on exit or window close
+void cleanup_simulation() {
+    g_quit_requested.store(true, std::memory_order_release);
+    if (g_sim_thread.joinable()) {
+        g_sim_thread.join();
+    }
+}
 
 // Real-time synchronization class
 // Synchronizes simulation time with wall clock time
@@ -114,6 +132,14 @@ std::atomic<bool> restart_triggered{false};
 
 // 在全局变量区域添加LED状态变量
 std::atomic<int> leds_state[5] = {{1}, {1}, {1}, {1}, {1}}; // 初始化为未激活状态
+
+// Window close callback for Linux (freeglut)
+#ifdef PLATFORM_LINUX
+void window_close_handler() {
+    cleanup_simulation();
+    glutLeaveMainLoop();
+}
+#endif
 
 const int WINDOW_WIDTH = 800;  // 窗口宽度
 const int WINDOW_HEIGHT = 600; // 窗口高度
@@ -246,6 +272,17 @@ void keyPressed(unsigned char key, int x, int y) {
         case 'g':
             keys[4] = 0;
             break;
+        // Exit handlers: ESC (27), 'q', or 'Q'
+        case 27:
+        case 'q':
+        case 'Q':
+            cleanup_simulation();
+#if defined(PLATFORM_LINUX)
+            glutLeaveMainLoop();
+#elif defined(PLATFORM_MACOS)
+            exit(0);
+#endif
+            break;
     }
 }
 
@@ -275,12 +312,27 @@ void graphics_loop(int argc, char** argv) {
     glutInitDisplayMode(GLUT_SINGLE);
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow("VGA and LED Simulator");
+    glutCreateWindow("VGA and LED Simulator (Press ESC or Q to exit)");
     glutDisplayFunc(render);
     glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
     glutKeyboardFunc(keyPressed);
     glutKeyboardUpFunc(keyReleased);
     
+    // Platform-specific window close handling
+#if defined(PLATFORM_MACOS)
+    // macOS: glutMainLoop() never returns, use atexit for cleanup
+    atexit(cleanup_simulation);
+#elif defined(PLATFORM_LINUX)
+    // Linux (freeglut): configure to continue execution after window close
+    #ifdef GLUT_ACTION_ON_WINDOW_CLOSE
+        glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+    #endif
+    // Register window close callback
+    #ifdef GLUT_HAS_CLOSE_CALLBACK
+        glutCloseFunc(window_close_handler);
+    #endif
+#endif
+
     gl_setup_complete.store(true, std::memory_order_release);
 
     // re-render every 16ms, around 60Hz
@@ -418,8 +470,8 @@ void simulation_loop() {
     // reset the model
     reset();
 
-    // cycle accurate simulation loop
-    while (!Verilated::gotFinish()) {
+    // cycle accurate simulation loop - also checks quit flag
+    while (!Verilated::gotFinish() && !g_quit_requested.load(std::memory_order_acquire)) {
         if (restart_triggered.exchange(false, std::memory_order_acquire)) {
             reset();
         }
@@ -440,11 +492,15 @@ int main(int argc, char** argv) {
 
     // On macOS, GLUT must run on the main thread
     // So we create a thread for simulation instead
-    thread sim_thread(simulation_loop);
+    g_sim_thread = std::thread(simulation_loop);
 
-    // Run GLUT on the main thread
+    // Run GLUT on the main thread (blocks on macOS, may return on Linux)
     graphics_loop(argc, argv);
 
-    // Wait for simulation thread to finish (if ever)
-    sim_thread.join();
+    // Cleanup simulation thread
+    // On macOS: this is also called via atexit, but duplicate join is safe
+    // On Linux: glutMainLoop returns after window close, cleanup here
+    cleanup_simulation();
+    
+    return 0;
 }
