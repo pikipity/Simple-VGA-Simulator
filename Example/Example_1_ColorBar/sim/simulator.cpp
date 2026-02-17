@@ -38,9 +38,17 @@ class RealTimeSync {
     std::chrono::steady_clock::time_point epoch;
     uint64_t sim_cycles = 0;
     static constexpr uint64_t NS_PER_CYCLE = 20;  // 50MHz = 20ns/cycle
+    bool lag_warning_issued = false;  // Only warn once to avoid spam
     
 public:
     RealTimeSync() : epoch(std::chrono::steady_clock::now()) {}
+    
+    // Reset time baseline - call after initialization is complete
+    void reset() {
+        epoch = std::chrono::steady_clock::now();
+        sim_cycles = 0;
+        lag_warning_issued = false;  // Reset warning flag on restart
+    }
     
     void tick() {
         sim_cycles++;
@@ -60,9 +68,11 @@ public:
                     __asm__ __volatile__("yield");    // ARM64 (Apple Silicon, etc.): yield CPU
                 #endif
             }
-        } else if (elapsed_ns - target_ns > 1000000) {
-            // Only warn if lag is more than 1ms to avoid spam
-            std::cerr << "Simulation lag: " << (elapsed_ns - target_ns) << "ns\n";
+        } else if (!lag_warning_issued && (elapsed_ns - target_ns > 100000000)) {
+            // Warn only once if lag exceeds 100ms (performance issue)
+            std::cerr << "Warning: Simulation running slower than real-time (lag: " 
+                      << (elapsed_ns - target_ns) / 1000000 << "ms).\n";
+            lag_warning_issued = true;
         }
     }
 };
@@ -469,6 +479,10 @@ void simulation_loop() {
 
     // reset the model
     reset();
+    
+    // Reset time baseline after initialization is complete
+    // This avoids false "Simulation lag" warnings from idle time during startup
+    g_sync.reset();
 
     // cycle accurate simulation loop - also checks quit flag
     while (!Verilated::gotFinish() && !g_quit_requested.load(std::memory_order_acquire)) {
