@@ -166,6 +166,33 @@ class VerilogTestbenchGenerator:
             self.file_path_var.set(filename)
             self.parse_verilog_file(filename)
     
+    def _extract_signal_name(self, decl):
+        """
+        从单个信号声明中提取信号名
+        处理格式: [direction] [wire/reg] [bitwidth] signal_name
+        例: "input wire [7:0] data" -> "data"
+        """
+        decl = decl.strip()
+        if not decl:
+            return None
+        
+        # 移除方向关键字 (input/output/inout)
+        decl = re.sub(r'^(input|output|inout)\s*', '', decl, flags=re.IGNORECASE)
+        
+        # 移除类型关键字 (wire/reg)
+        decl = re.sub(r'^(wire|reg)\s*', '', decl, flags=re.IGNORECASE)
+        
+        # 移除位宽声明 [x:y] 或多维 [x:y][a:b]
+        decl = re.sub(r'(\[[^\]]+\])+', '', decl)
+        
+        # 剩余部分应该是信号名
+        decl = decl.strip().rstrip(',').strip()
+        
+        # 验证信号名是合法的Verilog标识符
+        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', decl):
+            return decl
+        return None
+    
     def parse_verilog_file(self, filename):
         """Parse Verilog file to extract inputs and outputs"""
         try:
@@ -190,38 +217,53 @@ class VerilogTestbenchGenerator:
             self.module_signals = ['']
             
             # Parse port declarations
-            # Look for input/output declarations
             # 获取模块端口声明部分
             port_declaration = module_match.group(2)
             
-            # 改进的方法：逐行处理端口声明
-            lines = port_declaration.split('\n')
+            # 新的解析策略：处理Verilog的换行不敏感特性
+            # 1. 将声明按逗号分割成独立的信号声明
+            # 2. 对每个声明提取方向和信号名
             all_signals = []
             
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                    
-                # 匹配端口方向（input/output）
-                direction_match = re.match(r'(input|output)', line, re.IGNORECASE)
-                if direction_match:
-                    # 移除方向关键字
-                    line = re.sub(r'^\s*(input|output)\s*', '', line, flags=re.IGNORECASE)
-                    
-                    # 移除可能的wire/reg关键字
-                    line = re.sub(r'^\s*(wire|reg)\s*', '', line, flags=re.IGNORECASE)
-                    
-                    # 移除位宽声明 [x:y]
-                    line = re.sub(r'\[[^\]]+\]', '', line)
-                    
-                    # 提取信号名称（可能包含多个逗号分隔的信号）
-                    signals = re.findall(r'(\w+)', line)
-                    all_signals.extend(signals)
+            # 按逗号分割，但保留逗号在结果中用于处理
+            raw_items = re.split(r'(,)', port_declaration)
             
-            # 去重并排序
-            all_signals = sorted(list(set(all_signals)))
-            self.module_signals.extend(all_signals)
+            # 合并被逗号分割的项，处理每个信号声明
+            current_decl = ""
+            for item in raw_items:
+                item = item.strip()
+                if not item:
+                    continue
+                
+                if item == ',':
+                    # 遇到逗号，处理当前累积的声明
+                    if current_decl:
+                        signal = self._extract_signal_name(current_decl)
+                        if signal:
+                            all_signals.append(signal)
+                        current_decl = ""
+                else:
+                    # 累积声明内容
+                    if current_decl:
+                        current_decl += " " + item
+                    else:
+                        current_decl = item
+            
+            # 处理最后一个声明（没有尾随逗号）
+            if current_decl:
+                signal = self._extract_signal_name(current_decl)
+                if signal:
+                    all_signals.append(signal)
+            
+            # 去重并保持原始顺序
+            seen = set()
+            unique_signals = []
+            for s in all_signals:
+                if s not in seen and s not in ['input', 'output', 'inout', 'wire', 'reg']:
+                    seen.add(s)
+                    unique_signals.append(s)
+            
+            self.module_signals.extend(unique_signals)
             
             # Update comboboxes
             for combobox_i in range(len(self.combobox_list)):
@@ -290,13 +332,15 @@ class VerilogTestbenchGenerator:
         non_zero_list = [x for x in lst if x != 0]
         return len(non_zero_list) != len(set(non_zero_list))
     
-    def not_full_mapping(self, lst):
+    def is_mapping_empty(self, lst):
+        """检查是否至少有一个有效的映射"""
         non_zero_list = [x for x in lst if x != 0]
-        # print(non_zero_list)
-        # print(self.module_signals)
-        return len(non_zero_list) != len(self.module_signals[1:])
+        return len(non_zero_list) == 0
     
     def update_mapping(self):
+        # 首先清空旧的映射，确保每次都是从零开始构建
+        self.mapping = {}
+        
         # Get selections
         select_item = []
         for combobox_i in range(len(self.combobox_list)):
@@ -304,14 +348,15 @@ class VerilogTestbenchGenerator:
         
         # Check repeat
         if self.has_duplicates(select_item):
+            messagebox.showwarning("Warning", "Duplicate signal mapping detected. Please ensure each module signal is mapped to only one board pin.")
             self.mapping = {}
             return
         
-        # Check full mapping
-        if self.not_full_mapping(select_item):
-            self.mapping = {}
+        # Check if at least one signal is mapped (allow partial mapping)
+        if self.is_mapping_empty(select_item):
             return
 
+        # 构建新的映射
         for select_i in range(len(select_item)):
             if select_item[select_i] != 0:
                 self.mapping[self.module_signals[select_item[select_i]]] = self.tb_signals[select_i]
@@ -336,6 +381,7 @@ class VerilogTestbenchGenerator:
         # )
         filename = filedialog.askdirectory(
             title="Select simulation folder",
+            initialdir=os.getcwd(),
         )
         
         if not filename:
@@ -379,7 +425,7 @@ module DevelopmentBoard(
         """
 
         code += f"""
-{self.module_name} Simple_VGA_inst(
+{self.module_name} {self.module_name}_inst(
         """
 
         connections = []

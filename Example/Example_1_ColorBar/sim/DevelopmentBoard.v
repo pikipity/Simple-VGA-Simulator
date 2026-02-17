@@ -1,3 +1,4 @@
+
 `timescale 1ns / 1ns
 
 module DevelopmentBoard(
@@ -18,15 +19,15 @@ module DevelopmentBoard(
 	output wire led5
 );
 
-	// instance your model
-	ColorBar ColorBar_inst(
-		.sys_clk(clk),
-		.sys_rst_n(reset),
-		.hsync(h_sync),
-		.vsync(v_sync),
-		.rgb(rgb)
-	);
-    
+        
+ColorBar ColorBar_inst(
+                .sys_clk(clk),
+        .sys_rst_n(reset),
+        .hsync(h_sync),
+        .vsync(v_sync),
+        .rgb(rgb)
+    );
 
 
 endmodule
+        

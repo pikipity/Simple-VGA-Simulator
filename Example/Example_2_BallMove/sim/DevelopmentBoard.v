@@ -1,3 +1,4 @@
+
 `timescale 1ns / 1ns
 
 module DevelopmentBoard(
@@ -18,24 +19,24 @@ module DevelopmentBoard(
 	output wire led5
 );
 
-	// instance your model
-	Simple_VGA Simple_VGA_inst(
-		.sys_clk(clk),
-		.sys_rst_n(reset),
-		.hsync(h_sync),
-		.vsync(v_sync),
-		.rgb(rgb),
-		.up(B2),
-		.down(B3),
-		.left(B4),
-		.right(B5),
-		.led1(led1),
-		.led2(led2),
-		.led3(led3),
-		.led4(led4),
-		.led5(led5)
-	);
-    
+        
+Simple_VGA Simple_VGA_inst(
+                .sys_clk(clk),
+        .sys_rst_n(reset),
+        .up(B2),
+        .down(B3),
+        .left(B4),
+        .right(B5),
+        .hsync(h_sync),
+        .vsync(v_sync),
+        .rgb(rgb),
+        .led1(led1),
+        .led2(led2),
+        .led3(led3),
+        .led4(led4),
+        .led5(led5)
+    );
 
 
 endmodule
+        

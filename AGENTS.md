@@ -283,6 +283,7 @@ Expected: Blue ball on purple background. Use `s`/`d`/`f`/`g` keys to move the b
 | `obj_dir/VDevelopmentBoard.mk: No such file` | Verilation failed. Check Verilog syntax and include paths |
 | Black screen / no display | Check VGA timing parameters match specification |
 | Buttons not responding | Ensure button inputs are active-low (0 when pressed) |
+| `error messaging the mach port for IMKCFRunLoopWakeUpReliable` | **macOS only:** Harmless system warning from Input Method Kit when using file dialogs. Does not affect PinPlanner functionality. Can be safely ignored. |
 
 ### Display Issues on WSL
 
@@ -325,18 +326,67 @@ The build process creates an `obj_dir/` directory containing:
 - Input is limited to keyboard events captured by GLUT
 - Generated C++ code from Verilator should be reviewed for synthesis before FPGA deployment
 
+## Development Conventions
+
+### Testing File Organization
+
+**重要规则：所有测试用的文件必须放在单独的测试目录中。**
+
+- 测试脚本、测试数据、临时文件必须放在 `tests/` 或相关模块的测试目录中
+- 禁止在生产代码目录（如 `sim/`、`Example/`）中直接创建测试文件
+- 这样可以确保生产环境干净，避免用户混淆哪些是核心文件
+
+示例结构：
+```
+Simple-VGA-Simulator/
+├── sim/                    # 核心模拟器文件（仅生产代码）
+├── tests/                  # 测试文件目录
+│   ├── test_pinplanner.py  # PinPlanner测试脚本
+│   └── test_data/          # 测试数据
+└── Example/                # 示例项目
+```
+
 ## License
 
 MIT License - Copyright (c) 2025 Ze Wang
 
 ## TODO / Future Work
 
-- [ ] **PinPlanner.py**: A Python GUI tool (requires tkinter) to automatically generate `DevelopmentBoard.v` with proper signal mapping. Currently under development.
-  - Planned features:
-    - Browse and select top-level Verilog module
-    - Map development board pins to module signals via dropdowns
-    - Auto-generate `DevelopmentBoard.v` with proper signal mapping
-  - Usage (when completed): `python3 PinPlanner.py`
+### PinPlanner 
+
+**当前状态**: ✅ **已完成并测试通过**
+
+PinPlanner是一个GUI工具，用于自动解析Verilog模块并生成`DevelopmentBoard.v`包装文件。
+
+#### 1. 测试记录 ✅ 所有测试已通过
+
+**Verilog解析功能测试（ANSI风格）:**
+
+| ID | 描述 | 状态 |
+|----|------|------|
+| V-01~V-05 | 括号与逗号位置（换行不敏感） | ✅ 通过 |
+| V-11~V-20 | 信号方向与类型组合（含inout） | ✅ 通过 |
+| V-21~V-24 | 多位宽声明 | ✅ 通过 |
+| V-31~V-34 | 多信号同声明（逗号分隔） | ✅ 通过 |
+| V-41~V-44 | 注释干扰处理 | ✅ 通过 |
+| M-01~M-05 | 映射逻辑验证 | ✅ 通过 |
+| G-01~G-06 | 代码生成验证 | ✅ 通过 |
+
+**修复的Bug:**
+| ID | 问题 | 修复方案 | 状态 |
+|----|------|----------|------|
+| B-01 | 缺少inout支持 | 添加inout到方向正则表达式 | ✅ 已修复 |
+| B-02 | 关键字残留 | `_extract_signal_name`过滤关键字 | ✅ 已修复 |
+| B-03 | 强制完整映射 | 改为允许部分映射（至少1个信号） | ✅ 已修复 |
+| B-04 | 实例化名硬编码 | 改为`{module_name}_inst` | ✅ 已修复 |
+| - | 映射叠加Bug | `update_mapping()`开头清空`self.mapping` | ✅ 已修复 |
+| - | 文件对话框起始目录 | 添加`initialdir=os.getcwd()` | ✅ 已修复 |
+
+**回归测试:**
+- ✅ Example/ColorBar.v 解析正确
+- ✅ Example/Simple_VGA.v 解析正确
+- ✅ 生成代码可通过Verilator编译
+
 
 ## References
 
