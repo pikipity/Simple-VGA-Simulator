@@ -1024,6 +1024,84 @@ while (std::chrono::steady_clock::now() < target) {
 | ✅ P2 | macOS 窗口关闭按钮 | 低 | 无法退出（已修复）|
 | 🟢 P3 | 其他代码质量问题 | 低-中 | 维护困难 |
 
+#### 5. Linux/macOS 兼容性改进（2026-02-17 审查）
+
+以下改进建议来自对 `sim/simulator.cpp` 的跨平台兼容性审查。
+
+| ID | 优先级 | 问题 | 描述 | 位置 | 状态 |
+|----|--------|------|------|------|------|
+| C-01 | 🟡 中 | 平台检测过于宽泛 | 使用 `#else` 将所有非 Apple 平台视为 Linux，在 Windows、BSD 等平台上会错误识别 | 第 3-13 行 | ✅ **已修复** |
+| C-02 | 🟡 中 | GLUT 关闭回调检测不完善 | `GLUT_HAS_CLOSE_CALLBACK` 宏在 freeglut 2.4 不存在，导致 Ubuntu 16.04 等旧系统关闭按钮无效 | 第 333-345 行 | ✅ **已修复** |
+| C-03 | 🟢 低 | `cleanup_simulation` 重入安全问题 | 极端情况下可能并发调用导致 double-join（未定义行为） | 第 28-33 行 | ✅ **已修复** |
+| C-04 | 🟢 低 | 旧版 GLUT 缺少编译警告 | 使用原版 GLUT 或 freeglut 2.4- 编译时，无提示说明关闭按钮功能受限 | 第 9-15 行 | ✅ **已修复** |
+
+**C-01 精确平台检测：**
+
+当前代码使用 `#else` 将所有非 Apple 平台都视为 Linux，过于宽泛。建议改为：
+
+```cpp
+#if defined(__APPLE__)
+    #define PLATFORM_MACOS 1
+    #include <GLUT/glut.h>
+#elif defined(__linux__) || defined(__linux) || defined(linux)
+    #define PLATFORM_LINUX 1
+    #include <GL/glut.h>
+    #ifdef GLUT_API_VERSION
+        #include <GL/freeglut_ext.h>
+    #endif
+#else
+    #error "Unsupported platform - only macOS and Linux are supported"
+#endif
+```
+
+**C-02 改进 GLUT 关闭回调检测：**
+
+freeglut 2.4 支持 `glutCloseFunc` 但没有 `GLUT_HAS_CLOSE_CALLBACK` 宏。建议改为使用 `GLUT_API_VERSION >= 4` 作为主要检测：
+
+```cpp
+#if defined(GLUT_API_VERSION) && GLUT_API_VERSION >= 4
+    glutCloseFunc(window_close_handler);
+#elif defined(GLUT_HAS_CLOSE_CALLBACK)
+    glutCloseFunc(window_close_handler);
+#endif
+```
+
+**C-03 防止 `cleanup_simulation` 重入：**
+
+添加原子标志确保清理逻辑只执行一次：
+
+```cpp
+// 新增变量
+static std::atomic<bool> g_cleanup_done{false};
+
+// 修改函数
+void cleanup_simulation() {
+    if (g_cleanup_done.exchange(true, std::memory_order_acq_rel)) {
+        return;
+    }
+    g_quit_requested.store(true, std::memory_order_release);
+    if (g_sim_thread.joinable()) {
+        g_sim_thread.join();
+    }
+}
+```
+
+**C-04 旧版 GLUT 编译警告：**
+
+添加编译时警告提示用户功能限制：
+
+```cpp
+// 位置1：头文件包含后
+#ifndef GLUT_API_VERSION
+    #warning "Using original GLUT - window close button may not work properly. Consider installing freeglut."
+#endif
+
+// 位置2：关闭回调注册前
+#if (!defined(GLUT_API_VERSION) || GLUT_API_VERSION < 4) && !defined(GLUT_HAS_CLOSE_CALLBACK)
+    #warning "GLUT version does not support window close callback. Use ESC or Q key to exit."
+#endif
+```
+
 ---
 
 ## References

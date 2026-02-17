@@ -3,13 +3,17 @@
 #if defined(__APPLE__)
     #define PLATFORM_MACOS 1
     #include <GLUT/glut.h>
-#else
+#elif defined(__linux__) || defined(__linux) || defined(linux)
     #define PLATFORM_LINUX 1
     #include <GL/glut.h>
     // freeglut extensions for window close callback
     #ifdef GLUT_API_VERSION
         #include <GL/freeglut_ext.h>
+    #else
+        #warning "Using original GLUT - window close button may not work properly. Consider installing freeglut."
     #endif
+#else
+    #error "Unsupported platform - only macOS and Linux are supported"
 #endif
 #include <thread>
 #include <iostream>
@@ -23,9 +27,14 @@ using namespace std;
 // Cross-platform quit flag and global thread handle
 static std::atomic<bool> g_quit_requested{false};
 static std::thread g_sim_thread;
+static std::atomic<bool> g_cleanup_done{false};  // Prevent reentrant cleanup
 
 // Cleanup function called on exit or window close
 void cleanup_simulation() {
+    // Prevent double-join in case of concurrent calls
+    if (g_cleanup_done.exchange(true, std::memory_order_acq_rel)) {
+        return;
+    }
     g_quit_requested.store(true, std::memory_order_release);
     if (g_sim_thread.joinable()) {
         g_sim_thread.join();
@@ -333,8 +342,15 @@ void graphics_loop(int argc, char** argv) {
     #ifdef GLUT_ACTION_ON_WINDOW_CLOSE
         glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
     #endif
+    // Warn if GLUT version does not support window close callback
+    #if (!defined(GLUT_API_VERSION) || GLUT_API_VERSION < 4) && !defined(GLUT_HAS_CLOSE_CALLBACK)
+        #warning "GLUT version does not support window close callback. Use ESC or Q key to exit."
+    #endif
     // Register window close callback
-    #ifdef GLUT_HAS_CLOSE_CALLBACK
+    // Use GLUT_API_VERSION >= 4 for freeglut 2.4+, fallback to GLUT_HAS_CLOSE_CALLBACK
+    #if defined(GLUT_API_VERSION) && GLUT_API_VERSION >= 4
+        glutCloseFunc(window_close_handler);
+    #elif defined(GLUT_HAS_CLOSE_CALLBACK)
         glutCloseFunc(window_close_handler);
     #endif
 #endif
