@@ -5,27 +5,70 @@
 ## 📑 目录 / Table of Contents
 
 1. [简介 / Introduction](#1-简介--introduction)
+   - 1.1 [模拟器功能 / Simulator Features](#11-模拟器功能)
+   - 1.2 [系统要求 / System Requirements](#12-系统要求)
 2. [准备工作 / Prerequisites](#2-准备工作--prerequisites)
-   - 2.1 [Linux 命令行基础 / Linux Command Line Basics](#21-linux-命令行基础--linux-command-line-basics)
-   - 2.2 [Mac 命令行基础 / Mac Command Line Basics](#22-mac-命令行基础--mac-command-line-basics)
+   - 2.1 [Linux 命令行基础 / Linux Command Line Basics](#21-linux-命令行基础)
+      - 2.1.1 [什么是终端？/ What is a Terminal?](#211-什么是终端)
+      - 2.1.2 [如何打开终端？/ How to Open a Terminal?](#212-如何打开终端)
+      - 2.1.3 [基础命令详解 / Basic Commands Explained](#213-基础命令详解)
+      - 2.1.4 [文件权限基础 / File Permission Basics](#214-文件权限基础)
+      - 2.1.5 [Linux 路径详解 / Linux Paths Explained](#215-linux-路径详解)
+   - 2.2 [Mac 命令行基础 / Mac Command Line Basics](#22-mac-命令行基础)
+      - 2.2.1 [如何打开终端？/ How to Open Terminal on Mac?](#221-如何打开终端)
+      - 2.2.2 [Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands](#222-mac-与-linux-命令的区别)
 3. [系统安装 / System Installation](#3-系统安装--system-installation)
-   - 3.0 [推荐方案：使用预配置镜像（强烈推荐）/ Recommended: Use Pre-configured Image](#30-推荐方案使用预配置镜像强烈推荐--recommended-use-pre-configured-image-strongly-recommended)
-   - 3.1 [手动安装方案（备选）/ Manual Installation (Alternative)](#31-手动安装方案备选--manual-installation-alternative)
-   - 3.2 [Windows 备选方案：WSL / Windows Alternative: WSL](#32-windows-subsystem-for-linux-wsl)
-   - 3.3 [Mac 原生环境 / Mac Native Environment](#33-mac-原生环境--mac-native-environment)
+   - 3.1 [手动安装方案 / Manual Installation](#31-手动安装方案--manual-installation)
+      - 3.1.1 [下载与安装 VirtualBox / Download and Install VirtualBox](#311-下载与安装-virtualbox)
+      - 3.1.2 [下载 Ubuntu 镜像 / Download Ubuntu ISO](#312-下载-ubuntu-镜像)
+      - 3.1.3 [创建虚拟机 / Create Virtual Machine](#313-创建虚拟机)
+      - 3.1.4 [安装 Ubuntu / Install Ubuntu](#314-安装-ubuntu)
+      - 3.1.5 [安装增强功能与设置共享文件夹 / Install Guest Additions & Shared Folder](#315-安装增强功能与设置共享文件夹)
+   - 3.2 [Windows 备选方案：WSL / Windows Alternative: WSL](#32-windows-备选方案wsl)
+   - 3.3 [Mac 原生环境 / Mac Native Environment](#33-mac-原生环境)
 4. [工具安装 / Tool Installation](#4-工具安装--tool-installation)
-   - 4.1 [Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤--ubuntulinux-installation)
-   - 4.2 [Mac 安装步骤 / Mac Installation](#42-mac-安装步骤--mac-installation)
-   - 4.3 [验证安装 / Verify Installation](#43-验证安装--verify-installation)
-5. [下载模拟器 / Download Simulator](#5-下载模拟器--download-simulator)
-6. [使用教程 / Usage Tutorial](#6-使用教程--usage-tutorial)
-   - 6.1 [了解开发板模块 / Understanding the Development Board](#61-了解开发板模块--understanding-the-development-board)
-   - 6.2 [准备你的 Verilog 代码 / Preparing Your Verilog Code](#62-准备你的-verilog-代码--preparing-your-verilog-code)
-   - 6.3 [配置 DevelopmentBoard.v / Configuring DevelopmentBoard.v](#63-配置-developmentboardv--configuring-developmentboardv)
-   - 6.4 [运行模拟器 / Running the Simulator](#64-运行模拟器--running-the-simulator)
-7. [示例项目 / Example Projects](#7-示例项目--example-projects)
-8. [故障排除 / Troubleshooting](#8-故障排除--troubleshooting)
-9. [附录：Linux 路径详解 / Appendix: Linux Paths Explained](#9-附录linux-路径详解--appendix-linux-paths-explained)
+   - 4.1 [Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤)
+      - 4.1.0 [安装开发工具 / Install Development Tools](#410-安装开发工具)
+      - 4.1.1 [配置镜像源 / Configure Mirror Source](#411-配置镜像源)
+      - 4.1.2 [安装所需工具 / Install Required Tools](#412-安装所需工具)
+      - 4.1.3 [安装依赖问题排查 / Dependency Troubleshooting](#413-安装依赖问题排查)
+   - 4.2 [Mac 安装步骤 / Mac Installation](#42-mac-安装步骤)
+      - 4.2.0 [安装开发工具 / Install Development Tools](#420-安装开发工具)
+      - 4.2.1 [安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools)
+      - 4.2.2 [安装 Homebrew / Install Homebrew](#422-安装-homebrew)
+      - 4.2.3 [安装 SDL2 / Install SDL2](#423-安装-sdl2)
+      - 4.2.4 [安装 Verilator / Install Verilator](#424-安装-verilator)
+   - 4.3 [验证安装 / Verify Installation](#43-验证安装)
+5. [下载模拟器 / Download Simulator](#5-下载模拟器)
+   - 5.1 [方法 1：使用 Git 克隆 / Method 1: Clone with Git](#51-方法1使用-git-克隆)
+   - 5.2 [方法 2：直接下载 ZIP / Method 2: Direct ZIP Download](#52-方法2直接下载-zip)
+   - 5.3 [项目结构说明 / Project Structure Explanation](#53-项目结构说明)
+6. [使用教程 / Usage Tutorial](#6-使用教程)
+   - 6.1 [了解开发板模块 / Understanding the Development Board](#61-了解开发板模块)
+   - 6.2 [准备你的 Verilog 代码 / Preparing Your Verilog Code](#62-准备你的-verilog-代码)
+      - [步骤 1：整理文件 / Step 1: Organize Files](#步骤1整理文件)
+      - [步骤 2：添加时标 / Step 2: Add Timescale](#步骤2添加时标)
+      - [步骤 3：避免使用 IP 核 / Step 3: Avoid IP Cores](#步骤3避免使用-ip-核)
+   - 6.3 [配置 DevelopmentBoard.v / Configuring DevelopmentBoard.v](#63-配置-developmentboardv)
+      - [步骤 1：复制文件 / Step 1: Copy Files](#步骤1复制文件)
+      - [方法 A：使用 PinPlanner / Method A: Use PinPlanner](#方法a使用-pinplanner)
+      - [方法 B：手动编辑 / Method B: Manual Editing](#方法b手动编辑)
+   - 6.4 [运行模拟器 / Running the Simulator](#64-运行模拟器)
+      - [步骤 1：添加执行权限 / Step 1: Add Execute Permission](#步骤1添加执行权限)
+      - [步骤 2：运行仿真 / Step 2: Run Simulation](#步骤2运行仿真)
+      - [步骤 3：查看结果 / Step 3: View Results](#步骤3查看结果)
+7. [示例项目 / Example Projects](#7-示例项目)
+   - 7.1 [示例 1：彩色条 / Example 1: Color Bar](#71-示例1彩色条)
+   - 7.2 [示例 2：移动球 / Example 2: Ball Movement](#72-示例2移动球)
+8. [故障排除 / Troubleshooting](#8-故障排除)
+   - 8.1 [常见问题 / Common Issues](#81-常见问题)
+      - [Q1: verilator 未找到](#q1-verilator-未找到)
+      - [Q2: SDL.h 未找到](#q2-sdlh-未找到)
+      - [Q3: Permission denied](#q3-permission-denied)
+      - [Q4: 编译成功但窗口黑屏](#q4-编译成功但窗口黑屏)
+      - [Q5: 按键没有响应](#q5-按键没有响应)
+   - 8.2 [错误信息速查 / Quick Error Reference](#82-错误信息速查)
+9. [结语 / Conclusion](#9-结语)
 
 ---
 
@@ -35,16 +78,16 @@
 
 This manual is designed for FPGA course students, providing detailed instructions on how to install and use the VGA simulator. You can simulate VGA display effects on your computer without purchasing expensive FPGA development boards.
 
-### 模拟器功能 / Simulator Features
+### 1.1 模拟器功能 / Simulator Features
 
 | 功能 / Feature | 说明 / Description |
 |---------------|-------------------|
 | 🖥️ VGA 显示 / VGA Display | 640×480 分辨率，60Hz 刷新率，RGB565 16位彩色 / 640×480 resolution, 60Hz refresh rate, RGB565 16-bit color |
 | 🎮 虚拟按键 / Virtual Buttons | 5 个按键：Reset(a), B2(s), B3(d), B4(f), B5(g) / 5 buttons: Reset(a), B2(s), B3(d), B4(f), B5(g) |
 | 💡 虚拟 LED / Virtual LEDs | 5 个 LED 输出显示 / 5 LED output indicators |
-| ⚡ 实时仿真 / Real-time Simulation | 基于 Verilator + OpenGL / Based on Verilator + OpenGL |
+| ⚡ 实时仿真 / Real-time Simulation | 基于 Verilator + SDL2 / Based on Verilator + SDL2 |
 
-### 系统要求 / System Requirements
+### 1.2 系统要求 / System Requirements
 
 - **推荐 / Recommended**: Ubuntu 22.04 LTS (虚拟机或实体机 / Virtual or Physical Machine)
 - **替代方案 / Alternative**: macOS 15.0+ (Sequoia)
@@ -59,13 +102,13 @@ This manual is designed for FPGA course students, providing detailed instruction
 > ⚠️ **重要提示 / Important**: 即使你从未使用过 Linux，也不用担心！以下基础命令足以完成本课程的所有操作。  
 > Don't worry if you've never used Linux before! The following basic commands are sufficient for all operations in this course.
 
-#### 什么是终端？/ What is a Terminal?
+#### 2.1.1 什么是终端？/ What is a Terminal?
 
 终端（Terminal）是一个可以通过输入命令来控制电脑的程序。在 Windows 上你可能习惯使用图形界面点击操作，而在 Linux 中，很多操作通过输入命令更加高效。
 
 A terminal is a program that allows you to control your computer by typing commands. While you may be used to clicking through graphical interfaces on Windows, many operations are more efficient through command input in Linux.
 
-#### 如何打开终端？/ How to Open a Terminal?
+#### 2.1.2 如何打开终端？/ How to Open a Terminal?
 
 **Ubuntu 中打开终端的三种方法 / Three ways to open a terminal in Ubuntu:**
 
@@ -73,7 +116,7 @@ A terminal is a program that allows you to control your computer by typing comma
 2. **应用程序菜单 / Applications Menu**: 点击左下角的"Show Applications"（九宫格图标），搜索 "terminal"
 3. **右键菜单 / Right-click Menu**: 在桌面或文件夹空白处右键 → "Open in Terminal"
 
-#### 基础命令详解 / Basic Commands Explained
+#### 2.1.3 基础命令详解 / Basic Commands Explained
 
 打开终端后，你会看到一个提示符（prompt），通常长这样：
 
@@ -148,7 +191,7 @@ Use the `Tab` key to auto-complete filenames and avoid typing errors!
 $ cd Doc<Tab>    # 会自动补全为 Documents / Will auto-complete to Documents
 ```
 
-#### 文件权限基础 / File Permission Basics
+#### 2.1.4 文件权限基础 / File Permission Basics
 
 在 Linux 中，每个文件都有权限设置，决定谁能读取、写入或执行它。
 
@@ -176,34 +219,80 @@ $ chmod +x run_simulation.sh
 # 其中的 x 表示可执行 / The x indicates executable
 ```
 
-#### 文本编辑 / Text Editing
+#### 2.1.5 Linux 路径详解 / Linux Paths Explained
 
-**推荐编辑器 / Recommended Editor**: **VS Code**  
-VS Code 是一款免费、强大的代码编辑器，支持 Verilog 语法高亮和智能提示，非常适合本课程使用。
+在 Linux 中，有两种路径表示方式：/ In Linux, there are two ways to represent paths:
 
-VS Code is a free, powerful code editor that supports Verilog syntax highlighting and intelligent suggestions, making it ideal for this course.
+**1. 绝对路径 / Absolute Path**
 
-**在 Ubuntu 上安装 VS Code / Install VS Code on Ubuntu:**
+从根目录 `/` 开始的完整路径。无论你在哪里，绝对路径都指向同一个位置。  
+A complete path starting from the root directory `/`. No matter where you are, an absolute path points to the same location.
+
+```
+/home/username/Documents/project/file.txt
+/etc/apt/sources.list
+/usr/bin/verilator
+```
+
+**2. 相对路径 / Relative Path**
+
+相对于当前目录的路径。随着你所在位置变化，指向的位置也会变化。  
+A path relative to the current directory. As your location changes, the destination changes too.
+
+```
+documents/file.txt       # 当前目录下的 documents 文件夹 / documents folder in current directory
+../config/settings.txt   # 上级目录的 config 文件夹 / config folder in parent directory
+./script.sh              # 当前目录的 script.sh / script.sh in current directory
+```
+
+**特殊路径符号 / Special Path Symbols:**
+
+| 符号 / Symbol | 含义 / Meaning | 示例 / Example |
+|-------------|--------------|---------------|
+| `/` | 根目录 / Root directory | `cd /` |
+| `~` | 用户主目录 / User home directory | `cd ~`, `~/Documents` |
+| `.` | 当前目录 / Current directory | `./run.sh` |
+| `..` | 上级目录 / Parent directory | `cd ..`, `../RTL` |
+
+**实例演示 / Practical Examples:**
 
 ```bash
-# 使用 snap 安装（推荐）/ Install using snap (recommended):su
-sudo snap install code --classic
+# 假设当前位置 / Assume current location:
+$ pwd
+/home/student/Projects/MyVGA/sim
 
-# 或者使用 apt 安装 / Or install using apt:
-# 1. 下载并添加 Microsoft GPG 密钥
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-# 2. 添加 VS Code 软件源
-echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
-# 3. 清理并安装
-rm -f packages.microsoft.gpg
-sudo apt update
-sudo apt install code -y
+# 1. 使用绝对路径到 RTL 文件夹 / Use absolute path to RTL folder:
+$ ./run_simulation.sh /home/student/Projects/MyVGA/RTL
+
+# 2. 使用相对路径到 RTL 文件夹（上级目录）/ Use relative path to RTL folder (parent directory):
+$ ./run_simulation.sh ../RTL
+
+# 3. 从 sim 到 Downloads 文件夹 / From sim to Downloads folder:
+$ cd ~/Downloads
+# 或使用绝对路径 / Or use absolute path:
+$ cd /home/student/Downloads
+
+# 4. 快速回到项目 / Quickly return to project:
+$ cd ~/Projects/MyVGA/sim
 ```
+
+**路径使用建议 / Path Usage Tips:**
+
+1. **脚本中使用绝对路径 / Use absolute paths in scripts**: 确保无论在哪里运行都能找到文件  
+   Ensures files can be found regardless of where the script runs from
+
+2. **日常操作使用相对路径 / Use relative paths for daily operations**: 更短、更方便  
+   Shorter and more convenient
+
+3. **使用 Tab 补全避免错误 / Use Tab completion to avoid errors**:  
+   ```bash
+   $ cd /home/stu<Tab>    # 补全为 student / Completes to student
+   $ cd Pro<Tab>          # 补全为 Projects / Completes to Projects
+   ```
 
 ### 2.2 Mac 命令行基础 / Mac Command Line Basics
 
-#### 如何打开终端？/ How to Open Terminal on Mac?
+#### 2.2.1 如何打开终端？/ How to Open Terminal on Mac?
 
 **三种方法 / Three methods:**
 
@@ -211,7 +300,7 @@ sudo apt install code -y
 2. **Finder**: 应用程序(Applications) → 实用工具(Utilities) → 终端(Terminal)
 3. **Launchpad**: 找到"其他"文件夹 → 终端
 
-#### Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands
+#### 2.2.2 Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands
 
 大部分命令相同，但有几点重要区别：
 
@@ -223,127 +312,15 @@ Most commands are the same, but there are a few important differences:
 | 安装软件 / Install software | `sudo apt install xxx` | `brew install xxx` |
 | 更新软件列表 / Update package list | `sudo apt update` | `brew update` |
 
-#### Homebrew 介绍 / Homebrew Introduction
-
-Homebrew 是 Mac 上最流行的包管理器，类似于 Ubuntu 的 `apt`。它让你可以用命令行轻松安装各种软件。
-
-Homebrew is the most popular package manager on Mac, similar to Ubuntu's `apt`. It allows you to easily install various software via command line.
-
-**安装 Homebrew / Install Homebrew:**
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-安装完成后，根据终端提示，你可能需要运行以下命令来添加环境变量：
-
-After installation, depending on the terminal prompt, you may need to run the following to add environment variables:
-
-```bash
-# 根据你的 Mac 芯片选择 / Choose based on your Mac chip:
-# Apple Silicon (M1/M2/M3):
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# Intel Mac:
-echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.bash_profile
-eval "$(/usr/local/bin/brew shellenv)"
-```
-
-#### 文本编辑 / Text Editing
-
-**推荐编辑器 / Recommended Editor**: **VS Code**  
-与 Ubuntu 相同，我们推荐在 Mac 上也使用 VS Code 编辑代码。
-
-Same as Ubuntu, we recommend using VS Code for editing code on Mac as well.
-
-**在 Mac 上安装 VS Code / Install VS Code on Mac:**
-
-```bash
-# 使用 Homebrew 安装（推荐）/ Install using Homebrew (recommended):
-brew install --cask visual-studio-code
-
-# 或者从官网下载安装 / Or download from official website:
-# 访问 https://code.visualstudio.com/ 下载 .dmg 文件并安装
-# Visit https://code.visualstudio.com/ to download .dmg file
-```
-
 ---
 
 ## 3. 系统安装 / System Installation
 
-### 3.0 推荐方案：使用预配置镜像（强烈推荐）/ Recommended: Use Pre-configured Image (Strongly Recommended)
+### 3.1 手动安装方案 / Manual Installation
 
-> 💡 **什么是预配置镜像？/ What is a pre-configured image?**  
-> 这是一个已经安装好 Ubuntu 22.04 系统和所有必要软件（Verilator、OpenGL、VS Code 等）的虚拟机文件。你只需下载并导入到 VirtualBox 即可使用，无需手动安装配置，节省大量时间。
+> 按照以下步骤手动配置 Linux 环境。
 > 
-> This is a virtual machine file with Ubuntu 22.04 and all necessary software (Verilator, OpenGL, VS Code, etc.) pre-installed. Just download and import into VirtualBox - no manual installation needed, saving you significant time.
-
-#### 3.0.1 下载镜像 / Download the Image
-
-**镜像信息 / Image Information:**
-- **文件大小 / File Size**: 约 10 GB / Approximately 10 GB
-- **包含内容 / Contents**: Ubuntu 22.04 LTS + Verilator + OpenGL/GLUT + VS Code + GCC/Make等编译工具 / Build tools + Simple-VGA-Simulator仓库 / Simple-VGA-Simulator repository + 示例项目 / Example projects
-- **下载地址 / Download Link**:  
-  https://mustedumo-my.sharepoint.com/:f:/g/personal/zwang_must_edu_mo/IgDSoPQXR55fQ7hvSq5gZp-MAfp3Ukmmc4gS-ePI-k7KC8o?e=NKecM3
-
-> ⚠️ **下载提示 / Download Tips**:  
-> - 文件较大（10GB），建议使用稳定的网络环境下载 / File is large (10GB), use stable network  
-
-> 🍎 **Mac 用户注意 / Mac Users Note**:  
-> 预配置镜像仅适用于 Windows/Linux 用户。Mac 用户（包括 Intel 和 Apple Silicon）请跳过本节，直接使用 [Section 3.3 Mac 原生环境](#33-mac-原生环境--mac-native-environment) 在 macOS 上配置，操作更简单。  
-> The pre-configured image is for Windows/Linux users only. Mac users (both Intel and Apple Silicon) should skip this section and use [Section 3.3 Mac Native Environment](#33-mac-原生环境--mac-native-environment) for easier setup.
-
-#### 3.0.2 导入镜像到 VirtualBox / Import Image to VirtualBox
-
-**步骤 / Steps:**
-
-1. **安装 VirtualBox**（如尚未安装）/ Install VirtualBox (if not installed)
-   - 访问 / Visit: https://www.virtualbox.org/wiki/Downloads
-   - 下载并安装适合你系统的版本 / Download and install for your system
-
-
-2. **导入虚拟机 / Import Virtual Machine**
-   - 打开 VirtualBox / Open VirtualBox
-   - 点击 "文件(File)" → "导入虚拟电脑(Import Appliance)"  
-     Or press `Ctrl` + `I`
-
-3. **选择镜像文件 / Select Image File**
-   - 在弹出的窗口中，点击文件夹图标浏览  
-     Click folder icon to browse
-   - 选择下载的 `.ova` 或 `.ovf` 文件  
-     Select downloaded `.ova` or `.ovf` file
-   - 点击 "下一步(Next)"
-
-4. **配置虚拟机 / Configure Virtual Machine**
-   ```
-   名称 / Name: VGA-Ubuntu (可修改 / can be modified)
-   CPU: 2-4 核（根据你的电脑配置调整 / adjust based on your PC）
-   内存 / RAM: 4096 MB (4GB) 或更多 / or more
-   
-   注意：不要修改虚拟硬盘路径，保持默认即可  
-   Note: Do not change virtual disk path, keep default
-   ```
-
-5. **开始导入 / Start Import**
-   - 点击 "导入(Import)"
-   - 等待导入完成（约 5-10 分钟）/ Wait for import (about 5-10 minutes)
-
-6. **启动虚拟机 / Start VM**
-   - 导入完成后，选中虚拟机，点击 "启动(Start)"
-   - 用户名 / Username: `student`
-   - 密码 / Password: `123456` （或镜像说明中提供的密码 / or as provided in image description）
-
-🎉 **完成！/ Done!** 现在你可以直接使用模拟器，跳过所有安装步骤。  
-You can now use the simulator directly, skipping all installation steps.
-
----
-
-### 3.1 手动安装方案（备选）/ Manual Installation (Alternative)
-
-> 如果你无法下载预配置镜像，或者希望从零开始学习 Linux 安装，可以按照以下步骤手动配置。
-> 
-> If you cannot download the pre-configured image, or want to learn Linux installation from scratch, follow these manual configuration steps.
+> Follow these steps to manually configure the Linux environment.
 
 #### 3.1.1 下载与安装 VirtualBox / Download and Install VirtualBox
 
@@ -351,9 +328,12 @@ You can now use the simulator directly, skipping all installation steps.
 
 1. 访问官网 / Visit official website: https://www.virtualbox.org/wiki/Downloads
 
-2. 根据你的主机系统下载 / Download based on your host system:
-   - **Windows**: `VirtualBox-7.x.x-Win.exe`
-   - **Linux**: 通过包管理器安装 / Install via package manager
+2. 下载 Windows 版本的安装程序 / Download the Windows installer:
+   - `VirtualBox-7.x.x-Win.exe`
+
+> 🐧 **Linux 用户注意 / Linux Users Note**:  
+> Linux 用户可以直接在原生 Linux 系统上运行模拟器，无需安装虚拟机。直接跳到 [Section 4 工具安装](#4-工具安装--tool-installation) 安装所需工具即可。  
+> Linux users can run the simulator directly on native Linux without installing a virtual machine. Skip to [Section 4 Tool Installation](#4-工具安装--tool-installation) to install required tools.
 
 > 🍎 **Mac 用户注意 / Mac Users Note**:  
 > Mac 用户请直接使用 [Section 3.3 Mac 原生环境](#33-mac-原生环境--mac-native-environment) 配置，无需安装虚拟机。  
@@ -508,9 +488,9 @@ WSL 是 Windows 10/11 自带的 Linux 子系统，无需虚拟机即可运行 Li
 
 WSL is a Linux subsystem built into Windows 10/11, allowing Linux to run without a virtual machine.
 
-> ⚠️ **注意 / Note**: WSL 配置较为复杂，且需要额外安装 Xming 才能显示图形界面。如果你不熟悉命令行，强烈推荐使用 Section 3.0 预配置镜像或 Section 3.1 VirtualBox 方案。
+> ⚠️ **注意 / Note**: WSL 配置较为复杂。如果你不熟悉命令行，强烈推荐使用 Section 3.1 VirtualBox 方案。
 > 
-> WSL configuration is more complex and requires installing Xming for GUI. If you're not familiar with command line, we strongly recommend Section 3.0 pre-configured image or Section 3.1 VirtualBox approach.
+> WSL configuration is more complex. If you're not familiar with command line, we strongly recommend Section 3.1 VirtualBox approach.
 
 **安装步骤简述 / Brief Installation Steps:**
 
@@ -541,16 +521,35 @@ If you use Mac and don't want to use a virtual machine, you can configure the en
 **前置要求 / Prerequisites:**
 - macOS 15.0 (Sequoia) 或更高版本 / or later
 
+> 💡 **下一步 / Next Step**:  
+> Mac 用户环境配置请直接跳到 [Section 4.2 Mac 安装步骤](#42-mac-安装步骤--mac-installation) 安装所需工具。  
+> Mac users, please skip directly to [Section 4.2 Mac Installation](#42-mac-安装步骤--mac-installation) to install required tools.
+
 ---
 
 ## 4. 工具安装 / Tool Installation
 
-> 💡 **使用预配置镜像的学生注意 / Note for students using pre-configured image:**  
-> 如果你使用了 Section 3.0 推荐的预配置镜像，所有工具已经安装完毕，且模拟器仓库已克隆到系统中！你可以直接跳到 [Section 6 使用教程](#6-使用教程--usage-tutorial)。
-> 
-> If you used the pre-configured image recommended in Section 3.0, all tools are already installed, and the simulator repository has been cloned to the system! You can skip directly to [Section 6 Usage Tutorial](#6-使用教程--usage-tutorial).
-
 ### 4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation
+
+#### 4.1.0 安装开发工具 / Install Development Tools
+
+在使用模拟器之前，建议安装以下工具：
+
+**1. VS Code（代码编辑器）**
+
+| 项目 | 内容 |
+|------|------|
+| 用途 / Purpose | 编辑 Verilog 代码 / Edit Verilog code |
+| 下载 / Download | https://code.visualstudio.com/download |
+| 安装 / Install | 下载 `.deb` 安装包，双击安装 |
+
+**2. GitHub Desktop（可选）/ Optional**
+
+| 项目 | 内容 |
+|------|------|
+| 用途 / Purpose | 图形化管理代码仓库 / Manage repositories with GUI |
+| 说明 / Note | Linux 版本为社区维护 / Community-maintained for Linux |
+| 下载 / Download | https://github.com/shiftkey/desktop/releases |
 
 #### 4.1.1 配置镜像源（中国内地学生）/ Configure Mirror Source (Mainland China Students)
 
@@ -569,7 +568,7 @@ If you're in mainland China, the default Ubuntu software sources may be slow or 
 
 3. 编辑软件源列表 / Edit software sources:
    ```bash
-   sudo gedit /etc/apt/sources.list
+   sudo code /etc/apt/sources.list
    ```
 
 4. 删除所有内容，替换为以下内容（Ubuntu 22.04）/ Delete all content, replace with:
@@ -609,25 +608,74 @@ sudo apt-get install build-essential
 # 3. 安装 Verilator（Verilog 仿真器）/ Install Verilator (Verilog simulator)
 sudo apt-get install verilator
 
-# 4. 安装 OpenGL/GLUT（图形库）/ Install OpenGL/GLUT (graphics libraries)
-sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+# 4. 安装 SDL2（图形库）/ Install SDL2 (graphics library)
+sudo apt-get install libsdl2-dev
 
 # 5. 安装 git（版本控制工具，推荐）/ Install git (version control, recommended)
 sudo apt-get install git
 ```
 
 💡 **安装过程说明 / Installation Process Notes:**
-- 运行命令后，系统会询问 "Do you want to continue? [Y/n]"，输入 `Y` 然后回车
-- 下载和安装可能需要 5-10 分钟，取决于网络速度
-- 看到命令提示符返回，说明安装完成
+- 运行命令后，系统会询问 "Do you want to continue? [Y/n]"，输入 `Y` 然后回车  
+  After running the command, the system will ask "Do you want to continue? [Y/n]", type `Y` and press Enter
+- 下载和安装可能需要 5-10 分钟，取决于网络速度  
+  Download and installation may take 5-10 minutes depending on network speed
+- 看到命令提示符返回，说明安装完成  
+  Installation is complete when the command prompt returns
+
+#### 4.1.3 安装依赖问题排查 / Dependency Troubleshooting
+
+如果在安装 `libsdl2-dev` 时遇到如下错误：
+
+```bash
+libpulse-dev : Depends: libpulse0 (= 1:15.99.1+dfsg1-1ubuntu1) but 1:15.99.1+dfsg1-1ubuntu2.2 is to be installed
+libudev-dev : Depends: libudev1 (= 249.11-0ubuntu3.16) but 249.11-0ubuntu3.17 is to be installed
+E: Unable to correct problems, you have held broken packages.
+```
+
+**原因 / Cause**：系统已安装的库版本较新，但默认软件源中的开发包版本较旧，导致版本不匹配。
+
+**解决方案 / Solution**：添加 Ubuntu 官方更新源后重新安装：
+
+```bash
+# 添加更新源 / Add update sources
+sudo tee -a /etc/apt/sources.list << 'EOF'
+deb http://archive.ubuntu.com/ubuntu jammy-updates main universe
+deb http://security.ubuntu.com/ubuntu jammy-security main universe
+EOF
+
+# 更新并重新安装 / Update and reinstall
+sudo apt update
+sudo apt install libsdl2-dev
+```
 
 ### 4.2 Mac 安装步骤 / Mac Installation
 
+#### 4.2.0 安装开发工具 / Install Development Tools
+
+在使用模拟器之前，建议安装以下工具：
+
+**1. VS Code（代码编辑器）**
+
+| 项目 | 内容 |
+|------|------|
+| 用途 / Purpose | 编辑 Verilog 代码 / Edit Verilog code |
+| 下载 / Download | https://code.visualstudio.com/download |
+| 安装 / Install | 下载 `.dmg` 文件，拖拽到 Applications |
+
+**2. GitHub Desktop（可选）/ Optional**
+
+| 项目 | 内容 |
+|------|------|
+| 用途 / Purpose | 图形化管理代码仓库 / Manage repositories with GUI |
+| 下载 / Download | https://desktop.github.com |
+| 安装 / Install | 下载 `.dmg` 文件，拖拽到 Applications |
+
 #### 4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools
 
-macOS 的编译工具需要 Xcode Command Line Tools，它包含 GCC、Make 和 OpenGL/GLUT。
+macOS 的编译工具需要 Xcode Command Line Tools，它包含 GCC、Make 等编译工具。
 
-macOS compilation tools require Xcode Command Line Tools, which include GCC, Make, and OpenGL/GLUT.
+macOS compilation tools require Xcode Command Line Tools, which include GCC, Make, and other build tools.
 
 ```bash
 xcode-select --install
@@ -638,11 +686,19 @@ A dialog will pop up, click "Install" and wait for completion (about 5-10 minute
 
 #### 4.2.2 安装 Homebrew（如果尚未安装）/ Install Homebrew (if not installed)
 
+访问 https://brew.sh 并按照官方安装指南操作。
+
+Visit https://brew.sh and follow the installation instructions.
+
+Visit https://brew.sh and follow the official installation instructions.
+
+#### 4.2.3 安装 SDL2 / Install SDL2
+
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install sdl2
 ```
 
-#### 4.2.3 安装 Verilator / Install Verilator
+#### 4.2.4 安装 Verilator / Install Verilator
 
 ```bash
 brew install verilator
@@ -660,6 +716,11 @@ verilator --version
 # 预期输出类似：/ Expected output similar to:
 # Verilator 4.038 2020-07-11 rev v4.038
 
+# 检查 SDL2 版本 / Check SDL2 version
+sdl2-config --version
+# 预期输出：/ Expected output:
+# 2.0.20 (Ubuntu 22.04) 或更高 / or higher
+
 # 检查 GCC 版本 / Check GCC version
 gcc --version
 # 预期输出类似：/ Expected output similar to:
@@ -675,12 +736,7 @@ make --version
 
 ## 5. 下载模拟器 / Download Simulator
 
-> 💡 **使用预配置镜像的学生注意 / Note for students using pre-configured image:**  
-> 预配置镜像中已经包含模拟器仓库。你可以直接跳到 [Section 6 使用教程](#6-使用教程--usage-tutorial)。
-> 
-> The pre-configured image already includes the simulator repository. You can skip directly to [Section 6 Usage Tutorial](#6-使用教程--usage-tutorial).
-
-### 方法 1：使用 Git 克隆（推荐）/ Method 1: Clone with Git (Recommended)
+### 5.1 方法 1：使用 Git 克隆 / Method 1: Clone with Git
 
 ```bash
 # 进入你想存放项目的目录 / Navigate to where you want to store the project
@@ -698,14 +754,14 @@ cd Simple-VGA-Simulator
 ls -la
 ```
 
-### 方法 2：直接下载 ZIP / Method 2: Direct ZIP Download
+### 5.2 方法 2：直接下载 ZIP / Method 2: Direct ZIP Download
 
 1. 访问 / Visit: https://github.com/pikipity/Simple-VGA-Simulator
 2. 点击绿色 "<> Code" 按钮
 3. 选择 "Download ZIP"
 4. 解压到你想要的目录 / Extract to desired directory
 
-### 项目结构说明 / Project Structure Explanation
+### 5.3 项目结构说明 / Project Structure Explanation
 
 ```
 Simple-VGA-Simulator/
@@ -983,7 +1039,7 @@ chmod +x run_simulation.sh
 
 The simulator includes two example projects. We recommend running these first to verify your environment setup.
 
-### 示例 1：彩色条 / Example 1: Color Bar
+### 7.1 示例 1：彩色条 / Example 1: Color Bar
 
 ```bash
 # 进入示例目录 / Enter example directory
@@ -999,7 +1055,7 @@ chmod +x run_simulation.sh
 **预期结果 / Expected Result:**  
 窗口显示垂直彩色条（红、绿、蓝等颜色）/ Window displays vertical color bars (red, green, blue, etc.)
 
-### 示例 2：移动球 / Example 2: Ball Movement
+### 7.2 示例 2：移动球 / Example 2: Ball Movement
 
 ```bash
 # 进入示例目录 / Enter example directory
@@ -1021,7 +1077,7 @@ chmod +x run_simulation.sh
 
 ## 8. 故障排除 / Troubleshooting
 
-### 常见问题 / Common Issues
+### 8.1 常见问题 / Common Issues
 
 #### Q1: 提示 "verilator: command not found"
 
@@ -1035,17 +1091,16 @@ sudo apt-get install verilator
 brew install verilator
 ```
 
-#### Q2: 提示 "GL/glut.h: No such file"
+#### Q2: 提示 "SDL.h: No such file"
 
-**原因 / Cause**: OpenGL/GLUT 库未安装  
+**原因 / Cause**: SDL2 库未安装  
 **解决 / Solution**:
 ```bash
 # Ubuntu
-sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+sudo apt-get install libsdl2-dev
 
-# Mac: OpenGL/GLUT 已包含在 Xcode Command Line Tools 中
-# 重新安装 Xcode CLT:
-xcode-select --install
+# Mac
+brew install sdl2
 ```
 
 #### Q3: 提示 "Permission denied" 运行脚本时
@@ -1056,13 +1111,7 @@ xcode-select --install
 chmod +x run_simulation.sh
 ```
 
-#### Q4: Mac 上出现 "GLUT Fatal Error: internal error: NSInternalInconsistencyException"
-
-**原因 / Cause**: macOS 要求 GLUT 在主线程运行  
-**解决 / Solution**: 确保你使用的是最新版本的 `simulator.cpp`，它已针对 macOS 进行了修复。  
-Ensure you're using the latest `simulator.cpp` which has been fixed for macOS.
-
-#### Q5: 编译成功但窗口黑屏
+#### Q4: 编译成功但窗口黑屏
 
 **原因 / Cause**: VGA 时序参数不正确  
 **解决 / Solution**: 检查你的 VGA 控制器时序是否符合 640×480@60Hz 标准：  
@@ -1085,7 +1134,7 @@ Check if your VGA controller timing matches the 640×480@60Hz standard:
 | V_FRONT | 2 lines |
 | V_TOTAL | 525 lines |
 
-#### Q6: 按键没有响应
+#### Q5: 按键没有响应
 
 **原因 / Cause**: 按键逻辑可能不正确  
 **解决 / Solution**: 确保你的设计使用低电平有效逻辑（按下为 0）  
@@ -1101,93 +1150,18 @@ always @(posedge clk) begin
 end
 ```
 
-### 错误信息速查 / Quick Error Reference
+### 8.2 错误信息速查 / Quick Error Reference
 
 | 错误 / Error | 可能原因 / Likely Cause | 解决 / Solution |
 |------------|----------------------|----------------|
 | `obj_dir/VDevelopmentBoard.mk: No such file` | Verilation 失败 / Verilation failed | 检查 Verilog 语法 / Check Verilog syntax |
-| `undefined reference to 'glutInit'` | OpenGL 链接错误 / OpenGL linking error | 重新安装 GLUT 库 / Reinstall GLUT libraries |
+| `undefined reference to 'SDL_Init'` | SDL2 链接错误 / SDL2 linking error | 重新安装 SDL2 库 / Reinstall SDL2 libraries |
 | `syntax error, unexpected xxx` | Verilog 语法错误 / Verilog syntax error | 检查代码语法 / Check code syntax |
 | `Cannot find file: xxx.v` | 文件路径错误 / File path error | 检查 RTL 路径参数 / Check RTL path argument |
 
 ---
 
-## 9. 附录：Linux 路径详解 / Appendix: Linux Paths Explained
-
-### 路径类型 / Path Types
-
-在 Linux 中，有两种路径表示方式：/ In Linux, there are two ways to represent paths:
-
-#### 1. 绝对路径 / Absolute Path
-
-从根目录 `/` 开始的完整路径。无论你在哪里，绝对路径都指向同一个位置。  
-A complete path starting from the root directory `/`. No matter where you are, an absolute path points to the same location.
-
-```
-/home/username/Documents/project/file.txt
-/etc/apt/sources.list
-/usr/bin/verilator
-```
-
-#### 2. 相对路径 / Relative Path
-
-相对于当前目录的路径。随着你所在位置变化，指向的位置也会变化。  
-A path relative to the current directory. As your location changes, the destination changes too.
-
-```
-documents/file.txt       # 当前目录下的 documents 文件夹 / documents folder in current directory
-../config/settings.txt   # 上级目录的 config 文件夹 / config folder in parent directory
-./script.sh              # 当前目录的 script.sh / script.sh in current directory
-```
-
-### 特殊路径符号 / Special Path Symbols
-
-| 符号 / Symbol | 含义 / Meaning | 示例 / Example |
-|-------------|--------------|---------------|
-| `/` | 根目录 / Root directory | `cd /` |
-| `~` | 用户主目录 / User home directory | `cd ~`, `~/Documents` |
-| `.` | 当前目录 / Current directory | `./run.sh` |
-| `..` | 上级目录 / Parent directory | `cd ..`, `../RTL` |
-
-### 实例演示 / Practical Examples
-
-```bash
-# 假设当前位置 / Assume current location:
-$ pwd
-/home/student/Projects/MyVGA/sim
-
-# 1. 使用绝对路径到 RTL 文件夹 / Use absolute path to RTL folder:
-$ ./run_simulation.sh /home/student/Projects/MyVGA/RTL
-
-# 2. 使用相对路径到 RTL 文件夹（上级目录）/ Use relative path to RTL folder (parent directory):
-$ ./run_simulation.sh ../RTL
-
-# 3. 从 sim 到 Downloads 文件夹 / From sim to Downloads folder:
-$ cd ~/Downloads
-# 或使用绝对路径 / Or use absolute path:
-$ cd /home/student/Downloads
-
-# 4. 快速回到项目 / Quickly return to project:
-$ cd ~/Projects/MyVGA/sim
-```
-
-### 路径使用建议 / Path Usage Tips
-
-1. **脚本中使用绝对路径 / Use absolute paths in scripts**: 确保无论在哪里运行都能找到文件  
-   Ensures files can be found regardless of where the script runs from
-
-2. **日常操作使用相对路径 / Use relative paths for daily operations**: 更短、更方便  
-   Shorter and more convenient
-
-3. **使用 Tab 补全避免错误 / Use Tab completion to avoid errors**:  
-   ```bash
-   $ cd /home/stu<Tab>    # 补全为 student / Completes to student
-   $ cd Pro<Tab>          # 补全为 Projects / Completes to Projects
-   ```
-
----
-
-## 结语 / Conclusion
+## 9. 结语 / Conclusion
 
 如果在使用过程中遇到任何问题，请：/ If you encounter any issues during use, please:
 
