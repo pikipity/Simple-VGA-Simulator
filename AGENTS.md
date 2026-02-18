@@ -1641,6 +1641,95 @@ draw_label(surface, x, MARGIN_TOP, "VGA", color, scale);
 
 ---
 
+#### SDL2 迁移后的界面改进
+
+以下改进是在 SDL2 迁移完成后，为进一步提升用户体验而添加的功能。
+
+##### LED 编号标签 ✅ 已完成
+
+| ID | 描述 | 状态 |
+|----|------|------|
+| LED-01 | 为每个 LED 指示灯下方添加 "LED1"~"LED5" 编号标签 | ✅ 已完成 |
+| LED-02 | 扩展 bitmap 字体，添加数字 1-5 的字形定义 | ✅ 已完成 |
+| LED-03 | 标签字体大小设为区域标题的 1/3（最小为 2） | ✅ 已完成 |
+
+**修改日期**: 2026-02-18
+
+**修改原因**: 
+- 原有界面 LED 灯没有编号标识，用户无法区分 LED1~LED5
+- 需要与 Verilog 模块中的 `led1`~`led5` 信号对应
+
+**实现细节**:
+- 字体缩放：`label_font_scale = font_scale / 3`，最小值为 2
+- 标签位置：LED 圆心正下方，水平居中对齐
+- 字体颜色：灰色（与 "LED" 区域标题颜色一致）
+- 字符宽度：每个字符 6×scale 像素（5px 字宽 + 1px 间距）
+- 标签格式："LED1"、"LED2"、"LED3"、"LED4"、"LED5"
+
+**代码变更**:
+
+```cpp
+// 1. 扩展字体数组，添加数字 1-5（在原有 V,G,A,L,E,D 后添加）
+const uint8_t FONT_5x3[][5] = {
+    // ... 原有字符 0-5 ...
+    {0b00100, 0b01100, 0b00100, 0b00100, 0b01110}, // 1 (index 6)
+    {0b01110, 0b00001, 0b01110, 0b01000, 0b01111}, // 2 (index 7)
+    {0b01110, 0b00001, 0b00110, 0b00001, 0b01110}, // 3 (index 8)
+    {0b01001, 0b01001, 0b01111, 0b00001, 0b00001}, // 4 (index 9)
+    {0b01111, 0b01000, 0b01110, 0b00001, 0b01110}, // 5 (index 10)
+};
+
+// 2. draw_char() 添加数字 case
+void draw_char(SDL_Surface* surface, int x, int y, char c, uint32_t color, int scale) {
+    int idx = -1;
+    switch (c) {
+        // ... 原有 case ...
+        case '1': idx = 6; break;
+        case '2': idx = 7; break;
+        case '3': idx = 8; break;
+        case '4': idx = 9; break;
+        case '5': idx = 10; break;
+    }
+    // ...
+}
+
+// 3. render_sdl() 中添加标签绘制
+int label_font_scale = font_scale / 3;
+if (label_font_scale < 2) label_font_scale = 2;
+int label_char_w = 6 * label_font_scale;
+int label_led_w = 4 * label_char_w;  // "LED1" 宽度
+int label_y = led_y_start + LED_AREA_HEIGHT / 2 + led_radius + 8;
+
+for (int i = 0; i < 5; i++) {
+    int cx = led_spacing * (i + 1);
+    int label_x = cx - label_led_w / 2;
+    draw_label(g_screen_surface, label_x, label_y, "LED", label_color, label_font_scale);
+    // 绘制数字 (1-5)
+    char digit_str[2] = {'1' + i, '\0'};
+    draw_label(g_screen_surface, label_x + 3 * label_char_w, label_y, digit_str, label_color, label_font_scale);
+}
+```
+
+**视觉效果**:
+```
+┌─────────────────────────────────────┐
+│  L E D                              │  <- 区域标题（大字体）
+│    ○     ○     ○     ○     ○        │  <- LED 指示灯
+│  LED1  LED2  LED3  LED4  LED5       │  <- LED编号（小字体，新增）
+└─────────────────────────────────────┘
+```
+
+**修改文件**:
+- `sim/simulator.cpp`
+- `Example/Example_1_ColorBar/sim/simulator.cpp`
+- `Example/Example_2_BallMove/sim/simulator.cpp`
+
+**测试验证**:
+- ✅ Example 1（ColorBar）编译运行正常，LED 编号显示正确
+- ✅ Example 2（BallMove）编译运行正常，按键控制时对应 LED 亮起，编号清晰可见
+
+---
+
 ## References
 
 - [Verilator Documentation](https://www.veripool.org/verilator/)

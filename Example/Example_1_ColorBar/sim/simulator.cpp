@@ -151,14 +151,19 @@ std::atomic<bool> restart_triggered{false};
 std::atomic<int> leds_state[5] = {{1}, {1}, {1}, {1}, {1}}; // 初始化为未激活状态
 
 // Simple 5x3 bitmap font for labels (0 = empty, 1 = pixel)
-// Characters: V, G, A, L, E, D
+// Characters: V, G, A, L, E, D, 1, 2, 3, 4, 5
 const uint8_t FONT_5x3[][5] = {
-    {0b10001, 0b10001, 0b01010, 0b01010, 0b00100}, // V
-    {0b01110, 0b10000, 0b10111, 0b10001, 0b01110}, // G
-    {0b01110, 0b10001, 0b11111, 0b10001, 0b10001}, // A
-    {0b10000, 0b10000, 0b10000, 0b10000, 0b11111}, // L
-    {0b11111, 0b10000, 0b11100, 0b10000, 0b11111}, // E
-    {0b11110, 0b10001, 0b10001, 0b10001, 0b11110}, // D
+    {0b10001, 0b10001, 0b01010, 0b01010, 0b00100}, // V (0)
+    {0b01110, 0b10000, 0b10111, 0b10001, 0b01110}, // G (1)
+    {0b01110, 0b10001, 0b11111, 0b10001, 0b10001}, // A (2)
+    {0b10000, 0b10000, 0b10000, 0b10000, 0b11111}, // L (3)
+    {0b11111, 0b10000, 0b11100, 0b10000, 0b11111}, // E (4)
+    {0b11110, 0b10001, 0b10001, 0b10001, 0b11110}, // D (5)
+    {0b00100, 0b01100, 0b00100, 0b00100, 0b01110}, // 1 (6)
+    {0b01110, 0b00001, 0b01110, 0b01000, 0b01111}, // 2 (7)
+    {0b01110, 0b00001, 0b00110, 0b00001, 0b01110}, // 3 (8)
+    {0b01001, 0b01001, 0b01111, 0b00001, 0b00001}, // 4 (9)
+    {0b01111, 0b01000, 0b01110, 0b00001, 0b01110}, // 5 (10)
 };
 
 void draw_char(SDL_Surface* surface, int x, int y, char c, uint32_t color, int scale) {
@@ -170,6 +175,11 @@ void draw_char(SDL_Surface* surface, int x, int y, char c, uint32_t color, int s
         case 'L': idx = 3; break;
         case 'E': idx = 4; break;
         case 'D': idx = 5; break;
+        case '1': idx = 6; break;
+        case '2': idx = 7; break;
+        case '3': idx = 8; break;
+        case '4': idx = 9; break;
+        case '5': idx = 10; break;
     }
     if (idx < 0) return;
     
@@ -288,6 +298,22 @@ void render_sdl() {
     // Draw LED label (centered vertically in LED area)
     int led_label_y = led_y_start + (LED_AREA_HEIGHT - font_height) / 2;
     draw_label(g_screen_surface, 10, led_label_y, "LED", label_color, font_scale);
+    
+    // Draw "LED1" ~ "LED5" labels below each LED
+    int label_font_scale = font_scale / 3;
+    if (label_font_scale < 2) label_font_scale = 2;
+    int label_char_w = 6 * label_font_scale;  // 5px + 1px spacing
+    int label_led_w = 4 * label_char_w;        // "LED1" width
+    int label_y = led_y_start + LED_AREA_HEIGHT / 2 + led_radius + 8;
+    
+    for (int i = 0; i < 5; i++) {
+        int cx = led_spacing * (i + 1);
+        int label_x = cx - label_led_w / 2;
+        draw_label(g_screen_surface, label_x, label_y, "LED", label_color, label_font_scale);
+        // Draw digit (1-5) - position after "LED"
+        char digit_str[2] = {'1' + i, '\0'};
+        draw_label(g_screen_surface, label_x + 3 * label_char_w, label_y, digit_str, label_color, label_font_scale);
+    }
     
     // 8. Update window
     SDL_UpdateWindowSurface(g_window);
