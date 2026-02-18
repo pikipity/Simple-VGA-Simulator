@@ -412,6 +412,53 @@ Simple-VGA-Simulator/
 - 给用户机会审查代码变更
 - 让用户控制提交时机和提交信息
 
+### ⚠️ Main Branch AGENTS.md 管理规则（重要）
+
+**规则：main branch 禁止包含 AGENTS.md 文件**
+
+- **未来所有合并到 main branch 的操作都必须排除 AGENTS.md**
+- main branch 中不应存在 AGENTS.md 文件
+- 该规则适用于所有合并方式：Pull Request、merge、cherry-pick 等
+
+**验证方法：**
+
+合并前检查 main branch 是否存在 AGENTS.md：
+```bash
+git ls-tree HEAD | grep AGENTS.md
+# 或
+ls AGENTS.md 2>/dev/null && echo "EXISTS" || echo "NOT FOUND"
+```
+
+**操作建议：**
+
+1. **合并时手动排除**：
+   ```bash
+   # 方法 A: 合并前删除（适用于目标分支没有 AGENTS.md）
+   git merge <feature-branch>
+   git rm AGENTS.md
+   git commit --amend
+   
+   # 方法 B: 使用 --no-commit 手动控制
+   git merge <feature-branch> --no-commit --no-ff
+   git rm AGENTS.md
+   git commit
+   ```
+
+2. **本地 pre-commit hook**（个人开发环境）：
+   创建 `.git/hooks/pre-commit`：
+   ```bash
+   #!/bin/bash
+   if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] && [ -f "AGENTS.md" ]; then
+       echo "Error: AGENTS.md should not exist in main branch"
+       exit 1
+   fi
+   ```
+
+**原因：**
+- AGENTS.md 是 agent 专用的开发文档，不适合出现在生产代码分支
+- 防止 agent 开发细节泄露到用户可见的主分支
+- 保持 main branch 的简洁性，只包含用户需要的代码和文档
+
 ### AGENTS.md 更新规则
 
 **规则：仅在用户明确要求时更新 AGENTS.md**
