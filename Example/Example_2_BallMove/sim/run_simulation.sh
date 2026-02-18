@@ -6,14 +6,33 @@
 OS=$(uname -s)
 echo "Detected OS: $OS"
 
-# 根据操作系统设置链接参数
-if [ "$OS" = "Darwin" ]; then
-    # macOS
-    LDFLAGS="-LDFLAGS -framework -LDFLAGS GLUT -LDFLAGS -framework -LDFLAGS OpenGL"
+# Detect SDL2 with multiple fallback paths
+SDL_CONFIG=""
+for path in sdl2-config /opt/homebrew/bin/sdl2-config /usr/local/bin/sdl2-config /usr/bin/sdl2-config; do
+    if command -v "$path" &> /dev/null; then
+        SDL_CONFIG="$path"
+        break
+    fi
+done
+
+if [ -n "$SDL_CONFIG" ]; then
+    SDL_CFLAGS=$($SDL_CONFIG --cflags)
+    SDL_LIBS=$($SDL_CONFIG --libs)
+    echo "Found SDL2: $SDL_CONFIG"
+    echo "SDL CFLAGS: $SDL_CFLAGS"
+    echo "SDL LIBS: $SDL_LIBS"
 else
-    # Linux
-    LDFLAGS="-LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread"
+    echo "Warning: sdl2-config not found, using default flags"
+    # Fallback for common paths
+    SDL_CFLAGS="-I/usr/include/SDL2 -D_REENTRANT"
+    SDL_LIBS="-lSDL2"
 fi
+
+# Set LDFLAGS for Verilator (prepend -LDFLAGS to each flag)
+LDFLAGS=""
+for flag in $SDL_LIBS; do
+    LDFLAGS="$LDFLAGS -LDFLAGS $flag"
+done
 
 # 获取脚本所在的绝对路径
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -71,7 +90,7 @@ fi
 # 第一步：使用Verilator编译Verilog代码
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
-VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS)
+VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS")
 VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
@@ -84,9 +103,9 @@ if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     echo "2. Verilator is not installed"
     echo "   - Ubuntu: sudo apt install build-essential verilator"
     echo "   - macOS:  brew install verilator"
-    echo "3. OpenGL/GLUT is not installed"
-    echo "   - Ubuntu: sudo apt install libglu1-mesa-dev freeglut3-dev mesa-common-dev"
-    echo "   - macOS:  OpenGL/GLUT is included with Xcode Command Line Tools (xcode-select --install)"
+    echo "3. SDL2 is not installed"
+    echo "   - Ubuntu: sudo apt install libsdl2-dev"
+    echo "   - macOS:  brew install sdl2"
     echo "4. The code contains syntax errors"
     exit 1
 fi
@@ -96,6 +115,8 @@ echo "✓ Verilator compilation completed successfully!"
 # 第二步：构建仿真可执行文件
 echo "---------------------------------"
 echo "Step 2: Build the simulation executable..."
+# Export SDL flags for make
+export CXXFLAGS="$SDL_CFLAGS"
 make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
 
 # 检查make是否成功构建
