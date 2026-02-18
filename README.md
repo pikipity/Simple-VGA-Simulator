@@ -7,7 +7,7 @@ A Verilator-based FPGA VGA simulation environment for testing VGA controller des
 - 🖥️ **Virtual VGA Display** - 640×480 @ 60Hz, RGB565 16-bit color
 - 🎮 **5 Virtual Buttons** - Keyboard `a` (reset), `s/d/f/g` (custom)
 - 💡 **5 Virtual LEDs** - Visual output indicators
-- ⚡ **Real-time Simulation** - Based on Verilator + OpenGL with interactive debugging
+- ⚡ **Real-time Simulation** - Based on Verilator + SDL2 with interactive debugging
 
 ## Specifications
 
@@ -22,7 +22,7 @@ A Verilator-based FPGA VGA simulation environment for testing VGA controller des
 
 | Platform | Version | Tested Environment |
 |----------|---------|-------------------|
-| Linux | Ubuntu 20.04+ | GCC + Verilator |
+| Linux | Ubuntu 22.04+ | GCC + Verilator |
 | macOS | 15.0+ (Sequoia) | Apple Silicon, Clang |
 
 ## Prerequisites
@@ -39,33 +39,40 @@ sudo apt-get install build-essential
 # Install Verilator
 sudo apt-get install verilator
 
-# Install OpenGL/GLUT libraries
-sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+# Install SDL2 libraries
+sudo apt-get install libsdl2-dev
 ```
 
 **Verify installation:**
 ```bash
+# Check Verilator
 verilator --version  # Should show version 4.0+
+
+# Check SDL2
+sdl2-config --version  # Should show version number (e.g., 2.0.20)
 ```
 
 ### macOS
 
-1. **Install Xcode Command Line Tools** (includes OpenGL/GLUT)
+1. **Install Xcode Command Line Tools** (includes GCC compiler)
    ```bash
    xcode-select --install
    ```
 
 2. **Install Homebrew** (if not already installed)
+   
+   Visit https://brew.sh and follow the official installation instructions.
+
+3. **Install SDL2**
    ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   brew install sdl2
    ```
 
-3. **Install Verilator**
+4. **Install Verilator**
    ```bash
    brew install verilator
    ```
 
-> ⚠️ **Note:** On macOS, OpenGL/GLUT is deprecated but still functional. You may see deprecation warnings during compilation, which can be safely ignored.
 
 ## Quick Start
 

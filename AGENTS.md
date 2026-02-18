@@ -4,14 +4,14 @@
 
 Simple VGA Simulator is an FPGA development simulation environment that provides a virtual VGA display, reset button, 4 custom buttons, and 5 LEDs for testing Verilog designs without physical hardware.
 
-This simulator uses **Verilator** to compile Verilog code into C++ and **OpenGL/GLUT** for real-time visualization. It is designed for educational purposes, specifically for EIE330 students learning FPGA and VGA controller design.
+This simulator uses **Verilator** to compile Verilog code into C++ and **SDL2** for real-time visualization. It is designed for educational purposes, specifically for EIE330 students learning FPGA and VGA controller design.
 
 ## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
 | HDL Simulation | Verilator |
-| Graphics Rendering | OpenGL + GLUT |
+| Graphics Rendering | SDL2 |
 | Wrapper Code | C++ |
 | Helper Tool | Python 3 + tkinter |
 | Target Resolution | 640x480 @ 60Hz |
@@ -25,7 +25,7 @@ Simple-VGA-Simulator/
 ├── sim/                          # Core simulator files (REQUIRED for use)
 │   ├── PinPlanner.py             # GUI tool for generating DevelopmentBoard.v
 │   ├── DevelopmentBoard.v        # Top-level Verilog wrapper module
-│   ├── simulator.cpp             # C++ simulation wrapper with OpenGL
+│   ├── simulator.cpp             # C++ simulation wrapper with SDL2
 │   └── run_simulation.sh         # Build and run script
 ├── Example/                      # Example projects
 │   ├── Example_1_ColorBar/       # Static color bar demo
@@ -56,18 +56,21 @@ Simple-VGA-Simulator/
 sudo apt-get update
 sudo apt-get install build-essential
 sudo apt-get install verilator
-sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+sudo apt-get install libsdl2-dev
 ```
 
 For users in mainland China, use Tsinghua mirror for apt sources.
 
 #### macOS
 ```bash
-# Install Xcode Command Line Tools (includes gcc, make, OpenGL/GLUT)
+# Install Xcode Command Line Tools (includes gcc, make)
 xcode-select --install
 
 # Install Homebrew (if not already installed)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install SDL2
+brew install sdl2
 
 # Install Verilator
 brew install verilator
@@ -75,9 +78,7 @@ brew install verilator
 
 **macOS Notes:**
 - macOS uses Apple's Clang compiler instead of GCC (invoked via `gcc` alias)
-- OpenGL/GLUT frameworks are included with Xcode Command Line Tools
-- The `run_simulation.sh` script automatically detects macOS and uses the correct linking flags (`-framework GLUT -framework OpenGL` instead of `-lglut -lGLU -lGL`)
-- You may see deprecation warnings for OpenGL/GLUT APIs on macOS 10.9+ and 10.14+ respectively; these are harmless
+- The `run_simulation.sh` script automatically detects SDL2 installation path using `sdl2-config`
 
 ## Build and Run Commands
 
@@ -116,9 +117,9 @@ The `run_simulation.sh` script performs the following steps:
 2. **Step 1: Verilation** - Compiles Verilog to C++ using:
    ```bash
    verilator -Wall --cc --exe -I<rtl_path> simulator.cpp DevelopmentBoard.v \
-       -LDFLAGS -lglut -LDFLAGS -lGLU -LDFLAGS -lGL -LDFLAGS -lpthread
+       -LDFLAGS -lSDL2 -LDFLAGS -lpthread
    ```
-   > On macOS, the script automatically uses `-framework GLUT -framework OpenGL` instead.
+   > The `run_simulation.sh` script automatically detects SDL2 flags using `sdl2-config`.
 3. **Step 2: Compilation** - Builds executable using make:
    ```bash
    make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
@@ -278,37 +279,11 @@ Expected: Blue ball on purple background. Use `s`/`d`/`f`/`g` keys to move the b
 | Error | Solution |
 |-------|----------|
 | `verilator: command not found` | **Ubuntu:** `sudo apt install verilator`<br>**macOS:** `brew install verilator` |
-| `GL/glut.h: No such file` | **Ubuntu:** `sudo apt install libglu1-mesa-dev freeglut3-dev mesa-common-dev`<br>**macOS:** OpenGL/GLUT is included with Xcode Command Line Tools. Run `xcode-select --install` |
-| `GLUT Fatal Error: internal error: NSInternalInconsistencyException` | **macOS only:** GLUT must run on the main thread. Ensure you are using the latest `simulator.cpp` which creates a separate thread for simulation while running GLUT on the main thread. |
-| `std::atomic` initialization errors | **macOS only:** macOS libc++ has stricter requirements for atomic initialization. The code has been updated to use `.store()` method instead of aggregate initialization. |
+| `SDL.h: No such file` | **Ubuntu:** `sudo apt install libsdl2-dev`<br>**macOS:** `brew install sdl2` |
 | `obj_dir/VDevelopmentBoard.mk: No such file` | Verilation failed. Check Verilog syntax and include paths |
 | Black screen / no display | Check VGA timing parameters match specification |
 | Buttons not responding | Ensure button inputs are active-low (0 when pressed) |
 | `error messaging the mach port for IMKCFRunLoopWakeUpReliable` | **macOS only:** Harmless system warning from Input Method Kit when using file dialogs. Does not affect PinPlanner functionality. Can be safely ignored. |
-
-### Display Issues on WSL
-
-If using WSL on Windows, ensure X11 forwarding is configured:
-1. Install VcXsrv or Xming on Windows host
-2. Set `DISPLAY` environment variable in WSL
-3. Allow X11 forwarding through Windows Firewall
-
-### macOS Specific Notes
-
-#### Deprecation Warnings
-On macOS 10.9+ and 10.14+, you will see deprecation warnings for GLUT and OpenGL APIs. These are expected and can be safely ignored. Apple has deprecated these APIs in favor of Metal, but they remain fully functional.
-
-To suppress these warnings, you can add the following to the compiler flags in the Makefile (inside `obj_dir/VDevelopmentBoard.mk`):
-```makefile
-CXXFLAGS += -DGL_SILENCE_DEPRECATION
-```
-
-#### Thread Model
-macOS requires GLUT to run on the main thread. The `simulator.cpp` has been restructured to:
-- Run GLUT (`glutMainLoop`) on the **main thread**
-- Run the Verilator simulation loop on a **background thread**
-
-This is the opposite of the original Linux design but works correctly on both platforms.
 
 ## Generated Artifacts
 
@@ -324,7 +299,7 @@ The build process creates an `obj_dir/` directory containing:
 
 - The simulation runs with user-level permissions
 - No network connectivity in the simulation
-- Input is limited to keyboard events captured by GLUT
+- Input is limited to keyboard events captured by SDL2
 - Generated C++ code from Verilator should be reviewed for synthesis before FPGA deployment
 
 ## Helper Tools
