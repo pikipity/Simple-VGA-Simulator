@@ -31,6 +31,7 @@
       - 4.1.0 [安装开发工具 / Install Development Tools](#410-安装开发工具)
       - 4.1.1 [配置镜像源 / Configure Mirror Source](#411-配置镜像源)
       - 4.1.2 [安装所需工具 / Install Required Tools](#412-安装所需工具)
+      - 4.1.3 [安装依赖问题排查 / Dependency Troubleshooting](#413-安装依赖问题排查)
    - 4.2 [Mac 安装步骤 / Mac Installation](#42-mac-安装步骤)
       - 4.2.0 [安装开发工具 / Install Development Tools](#420-安装开发工具)
       - 4.2.1 [安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools)
@@ -621,6 +622,32 @@ sudo apt-get install git
   Download and installation may take 5-10 minutes depending on network speed
 - 看到命令提示符返回，说明安装完成  
   Installation is complete when the command prompt returns
+
+#### 4.1.3 安装依赖问题排查 / Dependency Troubleshooting
+
+如果在安装 `libsdl2-dev` 时遇到如下错误：
+
+```bash
+libpulse-dev : Depends: libpulse0 (= 1:15.99.1+dfsg1-1ubuntu1) but 1:15.99.1+dfsg1-1ubuntu2.2 is to be installed
+libudev-dev : Depends: libudev1 (= 249.11-0ubuntu3.16) but 249.11-0ubuntu3.17 is to be installed
+E: Unable to correct problems, you have held broken packages.
+```
+
+**原因 / Cause**：系统已安装的库版本较新，但默认软件源中的开发包版本较旧，导致版本不匹配。
+
+**解决方案 / Solution**：添加 Ubuntu 官方更新源后重新安装：
+
+```bash
+# 添加更新源 / Add update sources
+sudo tee -a /etc/apt/sources.list << 'EOF'
+deb http://archive.ubuntu.com/ubuntu jammy-updates main universe
+deb http://security.ubuntu.com/ubuntu jammy-security main universe
+EOF
+
+# 更新并重新安装 / Update and reinstall
+sudo apt update
+sudo apt install libsdl2-dev
+```
 
 ### 4.2 Mac 安装步骤 / Mac Installation
 

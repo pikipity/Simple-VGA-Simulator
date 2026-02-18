@@ -61,6 +61,30 @@ sudo apt-get install libsdl2-dev
 
 For users in mainland China, use Tsinghua mirror for apt sources.
 
+#### Ubuntu 22.04 SDL2 安装依赖问题
+
+如果在 Ubuntu 22.04 上安装 `libsdl2-dev` 时遇到如下依赖错误：
+
+```
+libpulse-dev : Depends: libpulse0 (= 1:15.99.1+dfsg1-1ubuntu1) but 1:15.99.1+dfsg1-1ubuntu2.2 is to be installed
+libudev-dev : Depends: libudev1 (= 249.11-0ubuntu3.16) but 249.11-0ubuntu3.17 is to be installed
+E: Unable to correct problems, you have held broken packages.
+```
+
+**原因**：系统已安装的库版本较新，但默认软件源中的开发包版本较旧，导致版本不匹配。
+
+**解决方案**：向 `/etc/apt/sources.list` 添加 Ubuntu 官方更新源：
+
+```bash
+sudo tee -a /etc/apt/sources.list << 'EOF'
+deb http://archive.ubuntu.com/ubuntu jammy-updates main universe
+deb http://security.ubuntu.com/ubuntu jammy-security main universe
+EOF
+
+sudo apt update
+sudo apt install libsdl2-dev
+```
+
 #### macOS
 ```bash
 # Install Xcode Command Line Tools (includes gcc, make)
