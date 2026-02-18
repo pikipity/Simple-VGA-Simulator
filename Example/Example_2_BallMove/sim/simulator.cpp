@@ -45,7 +45,7 @@ void cleanup_simulation() {
 class RealTimeSync {
     std::chrono::steady_clock::time_point epoch;
     uint64_t sim_cycles = 0;
-    static constexpr uint64_t NS_PER_CYCLE = 80;  // 12.5MHz = 80ns/cycle
+    static constexpr uint64_t NS_PER_CYCLE = 320;  // 3.125MHz = 320ns/cycle (reduced for VM performance)
     
     // Lag control parameters
     static constexpr uint64_t MAX_LAG_NS = 50000000;      // 50ms: maximum allowed lag
