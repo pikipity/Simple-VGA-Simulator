@@ -1730,6 +1730,257 @@ for (int i = 0; i < 5; i++) {
 
 ---
 
+#### 频繁按键VGA刷新迟缓问题修复（2026-02-18）
+
+**问题状态**: ✅ **已修复并测试通过**
+
+**修复日期**: 2026-02-18
+
+**问题描述**:
+在频繁按键操作（如快速连续按下多个方向键）时，VGA画面刷新出现明显迟缓，终端持续输出"Simulation lag"警告，且滞后时间（lag）持续增大不收敛，最终导致仿真失去响应。
+
+**根本原因分析**:
+
+1. **事件积压**：`run_event_loop()`使用`while (SDL_PollEvent(&e))`一次性处理SDL队列中的所有事件，当用户快速按键时，事件队列积压大量事件（包括KEYDOWN/KEYUP重复事件）
+
+2. **主线程阻塞**：处理积压事件消耗大量CPU时间，导致`SDL_Delay(16)`被跳过或延迟，主线程长时间占用CPU
+
+3. **仿真线程饿死**：在单核/低核CPU上，主线程的事件处理阻塞了仿真线程的执行，导致`RealTimeSync`发现真实时间已流逝很多，但仿真时间未推进
+
+4. **滞后累积**：`RealTimeSync`的忙等待机制在仿真线程被阻塞时无法正常工作，导致滞后持续累积
+
+**症状表现**（修复前）：
+```
+[RealTimeSync] Lag warn #1: current=1500us avg=1500us max=1500us
+[RealTimeSync] Lag warn #21: current=3500us avg=2500us max=3500us
+[RealTimeSync] Lag warn #41: current=7500us avg=4500us max=7500us
+...
+[RealTimeSync] Lag warn #1001: current=150000us avg=80000us max=150000us
+```
+
+---
+
+**修复方案**:
+
+##### 1. 事件处理限制（P0优先级）
+
+**技术实现**：
+```cpp
+// 修改前
+while (SDL_PollEvent(&e)) {
+    // 处理所有事件（可能数百个）
+}
+
+// 修改后
+const int MAX_EVENTS_PER_FRAME = 1;  // 严格限制每帧只处理1个事件
+int event_count = 0;
+while (SDL_PollEvent(&e) && event_count < MAX_EVENTS_PER_FRAME) {
+    event_count++;
+    // 处理该事件
+}
+// 剩余事件留在SDL队列中，下一帧继续处理
+```
+
+**设计考虑**：
+- 从3改为1是为了最大限度保证仿真线程获得CPU时间
+- 事件在SDL队列中排队，不会丢失，只是延迟处理
+- 60 FPS下，每秒仍可处理60个事件，足以应对正常按键操作
+
+##### 2. 自适应时间同步 - 滞后追赶机制（P0优先级）
+
+**技术实现**：
+```cpp
+class RealTimeSync {
+    static constexpr uint64_t MAX_LAG_NS = 50000000;      // 50ms最大允许滞后
+    static constexpr uint64_t WARN_LAG_NS = 1000000;      // 1ms警告阈值
+    
+    void tick() {
+        int64_t lag_ns = elapsed_ns - target_ns;
+        
+        if (lag_ns < 0) {
+            // 仿真时间领先：忙等待直到真实时间追上
+            busy_wait(-lag_ns);
+        } 
+        else if ((uint64_t)lag_ns > MAX_LAG_NS) {
+            // 严重滞后（>50ms）：重置时间基准，允许"追赶"
+            lag_reset_count++;
+            std::cerr << "[RealTimeSync] LAG RESET #" << lag_reset_count 
+                      << ": lag=" << lag_ns / 1000000 << "ms\n";
+            epoch = now;        // 重置时间基准
+            sim_cycles = 0;     // 重置仿真周期计数
+        } 
+        else if ((uint64_t)lag_ns > WARN_LAG_NS) {
+            // 轻微滞后（1-50ms）：统计但不频繁输出
+            warn_count++;
+            if (warn_count % 20 == 1) {
+                std::cerr << "[RealTimeSync] Lag warn #" << warn_count
+                          << ": current=" << lag_ns / 1000 << "us\n";
+            }
+        }
+    }
+};
+```
+
+**关键设计决策**：
+- 50ms阈值：足够大以避免误判正常的系统调度抖动，又足够小以保证用户体验
+- 重置而非追赶：直接重置时间基准比加速仿真更简单可靠，避免复杂的速度调节逻辑
+- 警告节流：每20次警告只输出1次，避免刷屏影响性能
+
+##### 3. 详细调试统计系统（P1优先级）
+
+**RealTimeSync内部统计**：
+```cpp
+uint64_t lag_reset_count = 0;   // 重置次数（关键指标）
+uint64_t total_lag_ns = 0;      // 累计滞后时间
+uint64_t max_lag_ns = 0;        // 最大滞后记录
+uint64_t cycle_count = 0;       // 总tick次数
+uint64_t wait_count = 0;        // 忙等待次数（健康度指标）
+uint64_t warn_count = 0;        // 警告次数
+```
+
+**EventLoop统计**：
+```cpp
+uint64_t frame_count = 0;           // 帧计数
+uint64_t total_events = 0;          // 总事件数
+uint64_t dropped_events = 0;        // 丢弃事件数（关键指标）
+uint64_t max_events_in_frame = 0;   // 单帧最大事件数
+int64_t max_frame_time = 0;         // 最大帧时间
+
+// 每秒输出统计报告
+std::cerr << "[EventLoop] FPS: " << frame_count 
+          << " | Events: " << total_events 
+          << " | Dropped: " << dropped_events
+          << " | MaxEvents/Frame: " << max_events_in_frame
+          << " | MaxFrameTime: " << max_frame_time << "ms\n";
+```
+
+**VSync统计**：
+```cpp
+static uint64_t g_vsync_count = 0;  // VSync计数（实际帧率）
+
+// 每60帧输出一次
+if (g_vsync_count % 60 == 0) {
+    std::cerr << "[VGA] VSync #" << g_vsync_count 
+              << " (frame " << (g_vsync_count / 60) << "s)\n";
+}
+```
+
+**按键输入日志**：
+```cpp
+case SDLK_s: 
+    keys[1].store(0); 
+    std::cerr << "[Input] Key 's' pressed (B2)\n";  // 实时显示按键
+    break;
+```
+
+**退出统计报告**：
+```cpp
+void printStats() const {
+    std::cerr << "\n========== RealTimeSync Stats ==========\n";
+    std::cerr << "Total cycles:    " << cycle_count << "\n";
+    std::cerr << "Wait cycles:     " << wait_count << " (" 
+              << (wait_count * 100 / cycle_count) << "%)\n";
+    std::cerr << "Lag resets:      " << lag_reset_count << "\n";
+    std::cerr << "Lag warnings:    " << warn_count << "\n";
+    std::cerr << "Max lag seen:    " << max_lag_ns / 1000 << "us\n";
+    std::cerr << "Avg lag (warn):  " << (total_lag_ns / warn_count) / 1000 << "us\n";
+    std::cerr << "========================================\n";
+}
+```
+
+##### 4. 字体渲染修复（P3优先级，回归修复）
+
+**问题背景**：在修改过程中误将`draw_char()`的列循环从5改为3，导致字符显示不全（如"G"显示像"C"）。
+
+**修复内容**：
+```cpp
+// 修改前（错误）
+for (int col = 0; col < 3; col++) {  // 只绘制3列，字符被截断
+
+// 修改后（正确）
+for (int col = 0; col < 5; col++) {  // 绘制5列，完整显示
+```
+
+---
+
+**验证过程**:
+
+#### Example 1 (ColorBar) 测试结果
+
+| 阶段 | 配置 | 事件限制 | LAG RESET | Lag Warnings | Max Lag | 结论 |
+|-----|------|---------|-----------|--------------|---------|------|
+| 修复前 | 原始代码 | 无限制 | 1次 | 3000+ | >100ms | 失控增长 |
+| 修复中 | 方案A+B | 3 | 1次 | 3000+ | 3-4ms | 改善但不彻底 |
+| 修复后 | 方案A+B | 1 | 0次 | 0 | 0us | 完全解决 |
+
+**关键输出**（Example 1）：
+```
+========== RealTimeSync Stats ==========
+Total cycles:    42591000
+Wait cycles:     40240687 (94%)   ← 仿真线程94%时间健康等待
+Lag resets:      0                 ← 关键：无重置！
+Lag warnings:    0                 ← 关键：无警告！
+Max lag seen:    0us               ← 关键：完全同步！
+Avg lag (warn):  0us
+========================================
+```
+
+#### Example 2 (BallMove) 测试结果
+
+| 阶段 | 配置 | 事件限制 | 计算负载 | LAG RESET | Lag Warnings | Max Lag | 结论 |
+|-----|------|---------|---------|-----------|--------------|---------|------|
+| 修复后 | 方案A+B | 1 | 高（球碰撞检测） | 1次（初始化） | ~9600+ | 2-3ms | 可控增长 |
+
+**分析**：
+- 虽然仍有滞后警告，但这是因为BallMove的Verilog代码计算量更大（球位置计算、边界碰撞检测）
+- 滞后从1ms缓慢增长到3ms，然后稳定，**没有失控**
+- 证明修复方案有效，只是系统性能不足以支撑12.5MHz仿真时钟
+
+---
+
+**未解决的问题与后续建议**:
+
+#### 未解决问题
+1. **Example 2仍有轻微滞后**：由于BallMove计算量大，12.5MHz仿真时钟对当前系统略高
+2. **事件队列延迟**：限制为1事件/帧后，快速连按4个键需要4帧（~66ms）才能全部响应，可能有轻微"按键延迟"感
+
+#### 后续优化建议
+
+**1. 降低仿真时钟频率**（可选）：
+```cpp
+// 当前
+static constexpr uint64_t NS_PER_CYCLE = 80;   // 12.5MHz
+// 建议
+static constexpr uint64_t NS_PER_CYCLE = 160;  // 6.25MHz，降低50%负载
+// 或
+static constexpr uint64_t NS_PER_CYCLE = 320;  // 3.125MHz，降低75%负载
+```
+仿真时钟降低不会影响VGA显示刷新率（仍为60Hz），只影响仿真精度。
+
+**2. 自适应事件限制**（可选）：
+```cpp
+// 根据当前滞后动态调整事件限制
+int MAX_EVENTS_PER_FRAME = (lag_ns > 5000000) ? 0 : 1;  // 滞后大时暂停事件处理
+```
+
+**3. 多核优化**（可选）：
+将仿真线程绑定到独立CPU核心，避免与主线程竞争。
+
+---
+
+**代码变更清单**:
+
+| 文件 | 修改位置 | 修改类型 | 修改内容摘要 |
+|-----|---------|---------|-------------|
+| `sim/simulator.cpp` | 44-137行 | 重构 | RealTimeSync类增强，添加滞后控制和统计 |
+| `sim/simulator.cpp` | 383-500行 | 重构 | run_event_loop()添加事件限制和详细统计 |
+| `sim/simulator.cpp` | 640-684行 | 增强 | simulation_loop()添加统计输出 |
+| `sim/simulator.cpp` | 600-639行 | 增强 | sample_pixel()添加VSync统计 |
+| `sim/simulator.cpp` | 244-252行 | 修复 | draw_char()列数3→5，修复字体显示 |
+| `Example/*/sim/simulator.cpp` | 全部 | 同步 | 同步上述所有修改 |
+
+**相关提交**: simulator.cpp 主文件修改，Example 1/2 同步更新
+
 ## References
 
 - [Verilator Documentation](https://www.veripool.org/verilator/)

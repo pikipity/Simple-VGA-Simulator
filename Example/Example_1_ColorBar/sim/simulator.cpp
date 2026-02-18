@@ -45,18 +45,37 @@ void cleanup_simulation() {
 class RealTimeSync {
     std::chrono::steady_clock::time_point epoch;
     uint64_t sim_cycles = 0;
-    static constexpr uint64_t NS_PER_CYCLE = 80;  // 12.5MHz = 80ns/cycle (reduced for better performance)
+    static constexpr uint64_t NS_PER_CYCLE = 80;  // 12.5MHz = 80ns/cycle
+    
+    // Lag control parameters
+    static constexpr uint64_t MAX_LAG_NS = 50000000;      // 50ms: maximum allowed lag
+    static constexpr uint64_t WARN_LAG_NS = 1000000;      // 1ms: warning threshold
+    
+    // Debug statistics
+    uint64_t lag_reset_count = 0;           // Reset count
+    uint64_t total_lag_ns = 0;              // Cumulative lag time
+    uint64_t max_lag_ns = 0;                // Maximum lag recorded
+    uint64_t cycle_count = 0;               // Total tick count
+    uint64_t wait_count = 0;                // Busy-wait count
+    uint64_t warn_count = 0;                // Warning count
     
 public:
     RealTimeSync() : epoch(std::chrono::steady_clock::now()) {}
     
-    // Reset time baseline - call after initialization is complete
     void reset() {
         epoch = std::chrono::steady_clock::now();
         sim_cycles = 0;
+        lag_reset_count = 0;
+        total_lag_ns = 0;
+        max_lag_ns = 0;
+        cycle_count = 0;
+        wait_count = 0;
+        warn_count = 0;
+        std::cerr << "[RealTimeSync] Reset time baseline\n";
     }
     
     void tick() {
+        cycle_count++;
         sim_cycles++;
         uint64_t target_ns = sim_cycles * NS_PER_CYCLE;
         
@@ -64,20 +83,56 @@ public:
         auto elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
             now - epoch).count();
         
-        if (target_ns > elapsed_ns) {
-            // Busy-wait until real time catches up to simulation time
-            auto target = now + std::chrono::nanoseconds(target_ns - elapsed_ns);
+        int64_t lag_ns = elapsed_ns - target_ns;
+        
+        if (lag_ns < 0) {
+            // Simulation ahead: busy-wait until real time catches up
+            wait_count++;
+            auto target = now + std::chrono::nanoseconds(-lag_ns);
             while (std::chrono::steady_clock::now() < target) {
                 #if defined(__x86_64__)
-                    __builtin_ia32_pause();           // Intel/AMD x86_64: reduce power/contention
+                    __builtin_ia32_pause();
                 #elif defined(__aarch64__) || defined(_M_ARM64)
-                    __asm__ __volatile__("yield");    // ARM64 (Apple Silicon, etc.): yield CPU
+                    __asm__ __volatile__("yield");
                 #endif
             }
-        } else if (elapsed_ns - target_ns > 1000000) {
-            // Only warn if lag is more than 1ms to avoid spam
-            std::cerr << "Simulation lag: " << (elapsed_ns - target_ns) << "ns\n";
+        } 
+        else if ((uint64_t)lag_ns > MAX_LAG_NS) {
+            // Severe lag: reset time baseline
+            lag_reset_count++;
+            std::cerr << "[RealTimeSync] LAG RESET #" << lag_reset_count 
+                      << ": lag=" << lag_ns / 1000000 << "ms"
+                      << " max_seen=" << max_lag_ns / 1000000 << "ms"
+                      << " cycles=" << cycle_count << "\n";
+            epoch = now;
+            sim_cycles = 0;
+        } 
+        else if ((uint64_t)lag_ns > WARN_LAG_NS) {
+            // Minor lag: count but don't output frequently (every 20 times)
+            warn_count++;
+            total_lag_ns += lag_ns;
+            if ((uint64_t)lag_ns > max_lag_ns) max_lag_ns = lag_ns;
+            
+            if (warn_count % 20 == 1) {
+                std::cerr << "[RealTimeSync] Lag warn #" << warn_count
+                          << ": current=" << lag_ns / 1000 << "us"
+                          << " avg=" << (total_lag_ns / warn_count) / 1000 << "us"
+                          << " max=" << max_lag_ns / 1000 << "us\n";
+            }
         }
+    }
+    
+    // Print statistics report
+    void printStats() const {
+        std::cerr << "\n========== RealTimeSync Stats ==========\n";
+        std::cerr << "Total cycles:    " << cycle_count << "\n";
+        std::cerr << "Wait cycles:     " << wait_count << " (" 
+                  << (cycle_count > 0 ? (wait_count * 100 / cycle_count) : 0) << "%)\n";
+        std::cerr << "Lag resets:      " << lag_reset_count << "\n";
+        std::cerr << "Lag warnings:    " << warn_count << "\n";
+        std::cerr << "Max lag seen:    " << max_lag_ns / 1000 << "us\n";
+        std::cerr << "Avg lag (warn):  " << (warn_count > 0 ? total_lag_ns / warn_count : 0) / 1000 << "us\n";
+        std::cerr << "========================================\n";
     }
 };
 
@@ -147,8 +202,11 @@ static std::atomic<bool> buffer_swap_pending{false}; // 新帧就绪标记
 
 std::atomic<bool> restart_triggered{false};
 
-// 在全局变量区域添加LED状态变量
-std::atomic<int> leds_state[5] = {{1}, {1}, {1}, {1}, {1}}; // 初始化为未激活状态
+// LED state variables
+std::atomic<int> leds_state[5] = {{1}, {1}, {1}, {1}, {1}}; // Initial inactive state
+
+// VSync counter for statistics
+static uint64_t g_vsync_count = 0;
 
 // Simple 5x3 bitmap font for labels (0 = empty, 1 = pixel)
 // Characters: V, G, A, L, E, D, 1, 2, 3, 4, 5
@@ -185,7 +243,7 @@ void draw_char(SDL_Surface* surface, int x, int y, char c, uint32_t color, int s
     
     const uint8_t* bitmap = FONT_5x3[idx];
     for (int row = 0; row < 5; row++) {
-        for (int col = 0; col < 5; col++) {  // Changed from 3 to 5 columns
+        for (int col = 0; col < 5; col++) {  // 5 columns for 5x5 font (FONT_5x3 name is misleading)
             if (bitmap[row] & (1 << (4 - col))) {
                 SDL_Rect pixel = {x + col * scale, y + row * scale, scale, scale};
                 SDL_FillRect(surface, &pixel, color);
@@ -327,47 +385,137 @@ void run_event_loop() {
     SDL_Event e;
     bool running = true;
     
+    // Strict event limit per frame
+    const int MAX_EVENTS_PER_FRAME = 1;         // Max 1 event per frame
+    const int TARGET_FPS = 60;
+    const int FRAME_TIME_MS = 1000 / TARGET_FPS; // 16ms
+    
+    // Debug statistics
+    uint64_t frame_count = 0;
+    uint64_t total_events = 0;
+    uint64_t dropped_events = 0;    // Events not processed due to limit
+    uint64_t max_events_in_frame = 0;
+    int64_t max_frame_time = 0;
+    auto last_report = std::chrono::steady_clock::now();
+    
     while (running && !g_quit_requested.load(std::memory_order_acquire)) {
-        // Poll all events (non-blocking)
+        auto frame_start = std::chrono::steady_clock::now();
+        frame_count++;
+        
+        // Count actual available events this frame (including those to be dropped)
+        int available_events = 0;
         while (SDL_PollEvent(&e)) {
-            switch (e.type) {
-                case SDL_QUIT:  // Window close button - works on all platforms
-                    running = false;
-                    break;
-                    
-                case SDL_KEYDOWN:
-                    switch (e.key.keysym.sym) {
-                        case SDLK_a:
-                            keys[0].store(0, std::memory_order_release);
-                            restart_triggered.store(true, std::memory_order_release);
-                            break;
-                        case SDLK_s: keys[1].store(0); break;
-                        case SDLK_d: keys[2].store(0); break;
-                        case SDLK_f: keys[3].store(0); break;
-                        case SDLK_g: keys[4].store(0); break;
-                        case SDLK_ESCAPE:
-                        case SDLK_q:
-                            running = false;
-                            break;
-                    }
-                    break;
-                    
-                case SDL_KEYUP:
-                    switch (e.key.keysym.sym) {
-                        case SDLK_a: keys[0].store(1); break;
-                        case SDLK_s: keys[1].store(1); break;
-                        case SDLK_d: keys[2].store(1); break;
-                        case SDLK_f: keys[3].store(1); break;
-                        case SDLK_g: keys[4].store(1); break;
-                    }
-                    break;
+            available_events++;
+            if (available_events <= MAX_EVENTS_PER_FRAME) {
+                // Process this event
+                switch (e.type) {
+                    case SDL_QUIT:
+                        running = false;
+                        break;
+                    case SDL_KEYDOWN:
+                        switch (e.key.keysym.sym) {
+                            case SDLK_a:
+                                keys[0].store(0, std::memory_order_release);
+                                restart_triggered.store(true, std::memory_order_release);
+                                std::cerr << "[Input] Key 'a' pressed (reset)\n";
+                                break;
+                            case SDLK_s: 
+                                keys[1].store(0); 
+                                std::cerr << "[Input] Key 's' pressed (B2)\n";
+                                break;
+                            case SDLK_d: 
+                                keys[2].store(0); 
+                                std::cerr << "[Input] Key 'd' pressed (B3)\n";
+                                break;
+                            case SDLK_f: 
+                                keys[3].store(0); 
+                                std::cerr << "[Input] Key 'f' pressed (B4)\n";
+                                break;
+                            case SDLK_g: 
+                                keys[4].store(0); 
+                                std::cerr << "[Input] Key 'g' pressed (B5)\n";
+                                break;
+                            case SDLK_ESCAPE:
+                            case SDLK_q:
+                                std::cerr << "[Input] Quit key pressed\n";
+                                running = false;
+                                break;
+                        }
+                        break;
+                    case SDL_KEYUP:
+                        switch (e.key.keysym.sym) {
+                            case SDLK_a: keys[0].store(1); break;
+                            case SDLK_s: keys[1].store(1); break;
+                            case SDLK_d: keys[2].store(1); break;
+                            case SDLK_f: keys[3].store(1); break;
+                            case SDLK_g: keys[4].store(1); break;
+                        }
+                        break;
+                }
+            } else {
+                // Count dropped events
+                dropped_events++;
             }
+        }
+        
+        total_events += (available_events <= MAX_EVENTS_PER_FRAME) ? available_events : MAX_EVENTS_PER_FRAME;
+        if ((uint64_t)available_events > max_events_in_frame) {
+            max_events_in_frame = available_events;
+        }
+        
+        // Warning if events were dropped
+        if (available_events > MAX_EVENTS_PER_FRAME) {
+            std::cerr << "[EventLoop] Dropped " << (available_events - MAX_EVENTS_PER_FRAME) 
+                      << " events this frame (processed " << MAX_EVENTS_PER_FRAME 
+                      << "/" << available_events << ")\n";
         }
         
         // Render frame
         render_sdl();
-        SDL_Delay(16);  // ~60 FPS
+        
+        // Adaptive frame rate control
+        auto frame_end = std::chrono::steady_clock::now();
+        auto frame_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            frame_end - frame_start).count();
+        
+        if (frame_duration > max_frame_time) {
+            max_frame_time = frame_duration;
+        }
+        
+        int delay_ms = FRAME_TIME_MS - (int)frame_duration;
+        if (delay_ms > 0) {
+            SDL_Delay(delay_ms);
+        } else if (delay_ms < -5) {
+            // Frame time exceeded target by more than 5ms, output warning
+            std::cerr << "[EventLoop] Slow frame: " << frame_duration 
+                      << "ms (target: " << FRAME_TIME_MS << "ms)\n";
+        }
+        
+        // Print statistics report every second
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_report).count();
+        if (elapsed >= 1) {
+            std::cerr << "[EventLoop] FPS: " << frame_count 
+                      << " | Events: " << total_events 
+                      << " | Dropped: " << dropped_events
+                      << " | MaxEvents/Frame: " << max_events_in_frame
+                      << " | MaxFrameTime: " << max_frame_time << "ms\n";
+            frame_count = 0;
+            total_events = 0;
+            dropped_events = 0;
+            max_events_in_frame = 0;
+            max_frame_time = 0;
+            last_report = now;
+        }
     }
+    
+    // Output final statistics
+    std::cerr << "\n========== EventLoop Final Stats ==========\n";
+    std::cerr << "Total frames processed: " << frame_count << "\n";
+    std::cerr << "Total events processed: " << total_events << "\n";
+    std::cerr << "Total events dropped:   " << dropped_events << "\n";
+    std::cerr << "Max events in one frame: " << max_events_in_frame << "\n";
+    std::cerr << "===========================================\n";
     
     g_quit_requested.store(true, std::memory_order_release);
 }
@@ -451,18 +599,22 @@ void reset() {
 
 // read VGA outputs and update graphics buffer
 void sample_pixel() {
-    
     coord_x = (coord_x + 1) % TOTAL_WIDTH;
 
     if(display->h_sync && !pre_h_sync){ // on positive edge of h_sync (active high)
-        // re-sync horizontal counter: reset to 0 and increment vertical counter
         coord_x = 0;
         coord_y = (coord_y + 1) % TOTAL_HEIGHT;
     }
 
     if(display->v_sync && !pre_v_sync){ // on positive edge of v_sync (active high)
-        // re-sync vertical counter: reset to 0
         coord_y = 0;
+        g_vsync_count++;
+        
+        // Output every 60 frames (~1 second)
+        if (g_vsync_count % 60 == 0) {
+            std::cerr << "[VGA] VSync #" << g_vsync_count 
+                      << " (frame " << (g_vsync_count / 60) << "s)\n";
+        }
     }
 
     if(coord_x >= H_ACTIVE_START && coord_x < H_ACTIVE_START + ACTIVE_WIDTH && 
@@ -472,13 +624,12 @@ void sample_pixel() {
         int rgb = display->rgb;
         float* buf = write_buffer.load(std::memory_order_relaxed);
         int idx = ((x_index * ACTIVE_HEIGHT) + y_index) * 3;
-        // Use lookup tables for fast RGB565 to float conversion
-        buf[idx] = RGB5_TO_FLOAT[(rgb >> 11) & 0x1F];      // Red (5-bit)
-        buf[idx + 1] = RGB6_TO_FLOAT[(rgb >> 5) & 0x3F];   // Green (6-bit)
-        buf[idx + 2] = RGB5_TO_FLOAT[rgb & 0x1F];          // Blue (5-bit)
+        buf[idx] = RGB5_TO_FLOAT[(rgb >> 11) & 0x1F];
+        buf[idx + 1] = RGB6_TO_FLOAT[(rgb >> 5) & 0x3F];
+        buf[idx + 2] = RGB5_TO_FLOAT[rgb & 0x1F];
     }
 
-    // 垂直同步上升沿时标记缓冲区可交换
+    // Mark buffer ready for swap at VSync
     if(display->v_sync && !pre_v_sync){
         buffer_swap_pending.store(true, std::memory_order_release);
     }
@@ -488,38 +639,48 @@ void sample_pixel() {
 }
 // simulation thread function
 void simulation_loop() {
-    // Initialize RGB lookup tables
-    init_rgb_lookup_tables();
+    std::cerr << "[SimThread] Starting simulation loop...\n";
     
-    // SDL initialization completes synchronously in main thread
-    // Add a short delay to ensure window is shown
+    init_rgb_lookup_tables();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // create the model
     display = new VDevelopmentBoard;
-
-    // reset the model
     reset();
-    
-    // Reset time baseline after initialization is complete
-    // This avoids false "Simulation lag" warnings from idle time during startup
     g_sync.reset();
+    
+    // Statistics
+    uint64_t iteration_count = 0;
+    auto sim_start_time = std::chrono::steady_clock::now();
 
-    // cycle accurate simulation loop - also checks quit flag
     while (!Verilated::gotFinish() && !g_quit_requested.load(std::memory_order_acquire)) {
         if (restart_triggered.exchange(false, std::memory_order_acquire)) {
+            std::cerr << "[SimThread] Reset triggered\n";
             reset();
         }
         
         tick();
         tick();
-        // the clock frequency of VGA is half of that of the whole model
-        // so we sample from VGA every other clock
         sample_pixel();
+        iteration_count++;
     }
+
+    auto sim_end_time = std::chrono::steady_clock::now();
+    auto sim_duration = std::chrono::duration_cast<std::chrono::seconds>(
+        sim_end_time - sim_start_time).count();
+    
+    std::cerr << "\n========== Simulation Thread Stats ==========\n";
+    std::cerr << "Simulation duration: " << sim_duration << "s\n";
+    std::cerr << "Total iterations:    " << iteration_count << "\n";
+    std::cerr << "Iterations/second:   " << (sim_duration > 0 ? iteration_count / sim_duration : 0) << "\n";
+    std::cerr << "Final time stamp:    " << main_time << "\n";
+    std::cerr << "=============================================\n";
+    
+    g_sync.printStats();
 
     display->final();
     delete display;
+    
+    std::cerr << "[SimThread] Simulation loop ended\n";
 }
 
 int main(int argc, char** argv) {
