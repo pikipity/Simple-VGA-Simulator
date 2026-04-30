@@ -137,3 +137,6 @@ vga_ctrl.v.bak
 vga_pic.v.bak
 SchematicDiagram/.$SchematicDiagram.drawio.bkp
 /sim/__pycache__
+/gui/.dart_tool
+gui/.flutter-plugins-dependencies
+gui/pubspec.lock
