@@ -140,3 +140,4 @@ SchematicDiagram/.$SchematicDiagram.drawio.bkp
 /gui/.dart_tool
 gui/.flutter-plugins-dependencies
 gui/pubspec.lock
+/gui/build
