@@ -141,3 +141,8 @@ SchematicDiagram/.$SchematicDiagram.drawio.bkp
 gui/.flutter-plugins-dependencies
 gui/pubspec.lock
 /gui/build
+gui/.metadata
+/gui/linux
+/gui/macos
+/gui/windows
+/gui/test

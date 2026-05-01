@@ -1,0 +1,28 @@
+name: vga_launcher
+description: Simple VGA Simulator GUI Launcher
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.0
+  file_picker: ^8.0.0+1
+  shared_preferences: ^2.2.3
+  path: ^1.9.0
+  path_provider: ^2.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/templates/development_board.v.tpl
+    - assets/sim/simulator.cpp
+    - assets/sim/run_simulation.sh
