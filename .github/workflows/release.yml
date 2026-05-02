@@ -61,6 +61,10 @@ jobs:
         working-directory: gui
         run: flutter pub get
 
+      - name: Generate platform projects
+        working-directory: gui
+        run: flutter create --platforms=${{ matrix.target }} .
+
       - name: Build ${{ matrix.target }}
         working-directory: gui
         run: flutter build ${{ matrix.target }} --release
