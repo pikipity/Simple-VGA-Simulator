@@ -132,6 +132,21 @@ sudo apt-get install -y build-essential verilator libsdl2-dev make
   flutter run -d windows   # or macos / linux
   ```
 
+  **Windows (Project not on system drive):**  
+  If the project resides on a non-system drive (e.g., `D:`, `E:`, or a VBox shared folder), Flutter cannot build across drive letters. Use the provided PowerShell script:
+  ```powershell
+  cd gui
+  powershell -ExecutionPolicy Bypass -File test_gui.ps1
+  ```
+  This script automatically:
+  1. Creates a proxy project in `C:\Windows\Temp\vga_gui_test`
+  2. Links `lib/` and `assets/` via Junction to the source on `H:`
+  3. Runs `flutter create --platforms=windows`
+  4. Runs `flutter build windows`
+  5. Launches the built executable
+
+  > Requires **Windows Developer Mode** enabled: Settings → Privacy & Security → Developer Options → Developer Mode → On.
+
 
 ## Quick Start
 
