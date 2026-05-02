@@ -29,7 +29,8 @@
       - [步骤 3：避免使用 IP 核 / Step 3: Avoid IP Cores](#步骤3避免使用-ip-核)
    - 6.3 [使用 GUI Launcher / Using GUI Launcher](#63-使用-gui-launcher)
 7. [示例项目 / Example Projects](#7-示例项目)
-   - 7.1 [运行示例 / Run Examples](#71-运行示例)
+   - 7.1 [示例 1：彩色条 / Color Bar](#71-示例-1彩色条--color-bar)
+   - 7.2 [示例 2：移动球 / Ball Movement](#72-示例-2移动球--ball-movement)
 8. [故障排除 / Troubleshooting](#8-故障排除)
    - 8.1 [常见问题 / Common Issues](#81-常见问题)
       - [Q1: verilator 未找到](#q1-verilator-未找到)
@@ -470,11 +471,7 @@ The GUI Launcher automatically handles signal mapping, `DevelopmentBoard.v` gene
 
 The simulator includes two example projects. We recommend running these first to verify your environment setup.
 
-### 7.1 运行示例 / Run Examples
-
----
-
-**示例 1：彩色条 / Example 1: Color Bar**
+### 7.1 示例 1：彩色条 / Color Bar
 
 1. **打开 GUI Launcher / Open GUI Launcher**
 
@@ -489,9 +486,7 @@ The simulator includes two example projects. We recommend running these first to
 5. **预期结果 / Expected Result:**
    - 窗口显示垂直彩色条（红、绿、蓝等颜色）/ Window displays vertical color bars (red, green, blue, etc.)
 
----
-
-**示例 2：移动球 / Example 2: Ball Movement**
+### 7.2 示例 2：移动球 / Ball Movement
 
 1. **打开 GUI Launcher / Open GUI Launcher**
 
