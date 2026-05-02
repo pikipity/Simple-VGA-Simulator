@@ -148,3 +148,5 @@ gui/.metadata
 /gui/test
 /Example/Example_1_ColorBar/sim
 /Example/Example_2_BallMove/sim
+/gui/Example/Example_2_BallMove/RTL/sim
+/gui/Example/Example_1_ColorBar/RTL/sim
