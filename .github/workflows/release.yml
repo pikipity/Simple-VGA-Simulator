@@ -1,0 +1,126 @@
+name: Release GUI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gui/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            build_path: build/linux/x64/release/bundle
+            artifact_name: vga-launcher-linux
+            archive_ext: tar.gz
+          - os: windows-latest
+            target: windows
+            build_path: build/windows/x64/Release
+            artifact_name: vga-launcher-windows
+            archive_ext: zip
+          - os: macos-latest
+            target: macos
+            build_path: build/macos/Build/Products/Release
+            artifact_name: vga-launcher-macos
+            archive_ext: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Enable desktop support
+        run: |
+          flutter config --enable-linux-desktop
+          flutter config --enable-windows-desktop
+          flutter config --enable-macos-desktop
+
+      - name: Get dependencies
+        working-directory: gui
+        run: flutter pub get
+
+      - name: Build ${{ matrix.target }}
+        working-directory: gui
+        run: flutter build ${{ matrix.target }} --release
+
+      - name: Package (Linux)
+        if: matrix.target == 'linux'
+        working-directory: gui
+        run: tar czf ../${{ matrix.artifact_name }}.${{ matrix.archive_ext }} -C ${{ matrix.build_path }} .
+
+      - name: Package (Windows)
+        if: matrix.target == 'windows'
+        working-directory: gui
+        shell: bash
+        run: 7z a ../${{ matrix.artifact_name }}.${{ matrix.archive_ext }} ./${{ matrix.build_path }}/*
+
+      - name: Package (macOS)
+        if: matrix.target == 'macos'
+        working-directory: gui
+        run: |
+          cd ${{ matrix.build_path }}
+          zip -r ../../../${{ matrix.artifact_name }}.${{ matrix.archive_ext }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from pubspec
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep '^version:' gui/pubspec.yaml | sed 's/version: //' | awk '{print $1}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}+build.${{ github.run_number }}
+          name: VGA Launcher v${{ steps.version.outputs.version }} (Build ${{ github.run_number }})
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
