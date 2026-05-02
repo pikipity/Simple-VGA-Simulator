@@ -105,35 +105,32 @@ If you're in mainland China, the default Ubuntu software sources may be slow or 
 
 **步骤 / Steps:**
 
-1. 打开终端 / Open terminal: `Ctrl` + `Alt` + `T`
+1. 打开清华大学镜像源帮助页面 / Open Tsinghua mirror help page:
+   https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/
 
-2. 备份原配置 / Backup original configuration:
+2. 根据你安装的 Ubuntu 版本，复制页面上对应的镜像源配置 / Copy the mirror source configuration corresponding to your Ubuntu version from the page:
+   - 例如 Ubuntu 22.04 LTS 选择版本为 **jammy**  
+     For example, Ubuntu 22.04 LTS corresponds to version **jammy**
+   - 如果你安装的是其他版本，请选择对应的版本代号  
+     If you installed another version, select the corresponding version codename
+
+3. 打开终端 / Open terminal: `Ctrl` + `Alt` + `T`
+
+4. 备份原配置 / Backup original configuration:
    ```bash
    sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup
    ```
 
-3. 编辑软件源列表 / Edit software sources:
+5. 编辑软件源列表 / Edit software sources:
    ```bash
    sudo code /etc/apt/sources.list
    ```
 
-4. 删除所有内容，替换为以下内容（Ubuntu 22.04）/ Delete all content, replace with:
-   ```
-   # 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
-   deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse
-   # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse
-   deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
-   # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
-   deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
-   # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
-   
-   deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
-   # deb-src http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
-   ```
+6. 删除所有内容，粘贴从网站复制的配置 / Delete all content, paste the configuration copied from the website:
 
-5. 保存并关闭 / Save and close
+7. 保存并关闭 / Save and close
 
-6. 更新软件列表 / Update package list:
+8. 更新软件列表 / Update package list:
    ```bash
    sudo apt-get update
    ```
