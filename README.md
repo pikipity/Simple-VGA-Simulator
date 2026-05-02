@@ -7,6 +7,7 @@ A Verilator-based FPGA VGA simulation environment for testing VGA controller des
 - 🖥️ **Virtual VGA Display** - 640×480 @ 60Hz, RGB565 16-bit color
 - 🎮 **5 Virtual Buttons** - Keyboard `a` (reset), `s/d/f/g` (custom)
 - 💡 **5 Virtual LEDs** - Visual output indicators
+- 🚀 **GUI Launcher** - One-click simulation with automatic compilation and signal mapping
 - ⚡ **Real-time Simulation** - Based on Verilator + SDL2 with interactive debugging
 
 ## Specifications
@@ -24,98 +25,96 @@ A Verilator-based FPGA VGA simulation environment for testing VGA controller des
 |----------|---------|-------------------|
 | Linux | Ubuntu 22.04+ | GCC + Verilator |
 | macOS | 15.0+ (Sequoia) | Apple Silicon, Clang |
+| Windows | 10/11 | WSL2 / Native (MSYS2) |
 
 ## Prerequisites
 
-### Ubuntu / Linux
+### 1. Simulation Environment (Required)
 
-```bash
-# Update package lists
-sudo apt-get update
+Regardless of using GUI or command line, the following tools must be installed:
 
-# Install build tools
-sudo apt-get install build-essential
-
-# Install Verilator
-sudo apt-get install verilator
-
-# Install SDL2 libraries
-sudo apt-get install libsdl2-dev
-```
+| Tool | Ubuntu / Debian | macOS | Windows (WSL2 / MSYS2) |
+|------|-----------------|-------|------------------------|
+| **Verilator** | `sudo apt install verilator` | `brew install verilator` | `pacman -S verilator` |
+| **SDL2** | `sudo apt install libsdl2-dev` | `brew install sdl2` | `pacman -S sdl2` |
+| **make + g++** | `sudo apt install build-essential` | `xcode-select --install` | `pacman -S make gcc` |
 
 **Verify installation:**
 ```bash
-# Check Verilator
-verilator --version  # Should show version 4.0+
-
-# Check SDL2
-sdl2-config --version  # Should show version number (e.g., 2.0.20)
+verilator --version      # Should show 4.0+
+sdl2-config --version    # Should show 2.0+
+make --version           # Should show 3.81+
+g++ --version            # Should show 7.0+
 ```
 
-### macOS
+### 2. GUI Launcher (Optional)
 
-1. **Install Xcode Command Line Tools** (includes GCC compiler)
-   ```bash
-   xcode-select --install
-   ```
+- **Option A: Download Pre-built Package (Recommended)**  
+  Download the corresponding platform archive from [GitHub Releases](../../releases). Extract and run directly — no Flutter SDK required.
 
-2. **Install Homebrew** (if not already installed)
-   
-   Visit https://brew.sh and follow the official installation instructions.
-
-3. **Install SDL2**
-   ```bash
-   brew install sdl2
-   ```
-
-4. **Install Verilator**
-   ```bash
-   brew install verilator
-   ```
+- **Option B: Build GUI from Source**  
+  Install [Flutter SDK](https://docs.flutter.dev/get-started/install) (Stable channel, 3.0+). Then:
+  ```bash
+  cd gui
+  flutter pub get
+  flutter run -d windows   # or macos / linux
+  ```
 
 
 ## Quick Start
 
-### 1. Run Example (2-minute demo)
+### Option 1: GUI Launcher (Recommended)
 
+The easiest way to run simulations without touching the command line.
+
+**Step 1:** Download the pre-built package
+
+Visit [GitHub Releases](../../releases) and download `vga-launcher-<platform>.zip` / `.tar.gz` for your system.
+
+**Step 2:** Extract and run
+
+| Platform | Run Command |
+|----------|-------------|
+| Windows | Double-click `vga_launcher.exe` |
+| macOS | Right-click `VGA Launcher.app` → Open |
+| Linux | `./vga_launcher` |
+
+**Step 3:** Use the GUI
+
+1. **Select Project Directory** — Choose the folder containing your `.v` files
+2. **Select Top Module** — Pick the top-level module from the dropdown
+3. **Signal Mapping** — Automatically inferred; adjust manually if needed
+4. **🚀 Run Simulation** — Click to compile and launch the VGA window
+
+> The GUI automatically creates a `sim/` folder inside your project, generates `DevelopmentBoard.v`, and handles the entire compilation process transparently.
+
+---
+
+### Option 2: Command Line (Advanced)
+
+For users who prefer terminal or need CI/CD integration.
+
+**Run Example:**
 ```bash
-# Navigate to example
 cd Example/Example_1_ColorBar/sim
-
-# Make executable
 chmod +x run_simulation.sh
-
-# Run simulation
 ./run_simulation.sh ../RTL
 ```
 
-A VGA window will appear displaying color bars. Press `a` to reset.
+**Use with Your Own Project:**
 
-### 2. Use with Your Own Project
-
-**Setup:** Copy these 3 files from `sim/` to your project:
-
+Organize your files as:
 ```
 your_project/
-├── sim/
-│   ├── DevelopmentBoard.v   # Top-level wrapper
-│   ├── simulator.cpp        # C++ simulation main
-│   └── run_simulation.sh    # Build & run script
-└── RTL/                     # Your Verilog files
-    └── your_module.v
+├── RTL/
+│   └── your_module.v        # Your Verilog files
+└── sim/                       # Auto-created by GUI, or copy manually
+    ├── DevelopmentBoard.v
+    ├── simulator.cpp
+    └── run_simulation.sh
 ```
 
-**Steps:**
-
-| Step | Action | Details |
-|------|--------|---------|
-| 1 | Organize code | Put all `.v` files in `RTL/` folder. **Note:** IP cores are not supported; replace them with your own designs. |
-| 2 | Add timescale | Add `` `timescale 1ns / 1ns`` to the beginning of all module files. |
-| 3 | Configure `DevelopmentBoard.v` | **Option A (GUI):** Run `python3 /path/to/PinPlanner.py` to auto-generate.<br>**Option B (Manual):** Edit `DevelopmentBoard.v` to instantiate your module. |
-| 4 | Run simulation | Execute `./run_simulation.sh <rtl_path>` |
-
-**Example commands:**
-
+Run:
 ```bash
 # If RTL is in parent directory
 ./run_simulation.sh ../RTL
@@ -128,8 +127,12 @@ your_project/
 
 ```
 Simple-VGA-Simulator/
-├── sim/                    # Core simulation files (required)
-│   ├── PinPlanner.py       # GUI tool for auto-generating DevelopmentBoard.v
+├── gui/                    # Flutter GUI Launcher (recommended)
+│   ├── lib/                # Dart source code
+│   ├── assets/             # Templates (simulator.cpp, run_simulation.sh)
+│   └── pubspec.yaml
+├── sim/                    # Core simulation files (CLI)
+│   ├── PinPlanner.py       # Legacy GUI tool (CLI backup)
 │   ├── DevelopmentBoard.v  # Top-level wrapper template
 │   ├── simulator.cpp       # C++ simulation main
 │   └── run_simulation.sh   # Build & run script
@@ -139,6 +142,16 @@ Simple-VGA-Simulator/
 ├── SchematicDiagram/       # Documentation diagrams
 └── Manual for EIE330 Students.md  # Detailed student manual
 ```
+
+## GUI vs CLI
+
+| | GUI Launcher | Command Line |
+|---|--------------|--------------|
+| **Difficulty** | ⭐ Zero-config | ⭐⭐⭐ Manual setup |
+| **Signal Mapping** | Visual dropdowns | Edit `DevelopmentBoard.v` manually |
+| **Compilation** | One-click, transparent | Run `./run_simulation.sh` |
+| **Best For** | Students, beginners | CI/CD, advanced users |
+| **Requirements** | Simulation environment only | Simulation environment + terminal |
 
 ## Key Mappings
 
