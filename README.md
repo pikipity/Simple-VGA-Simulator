@@ -33,11 +33,11 @@ A Verilator-based FPGA VGA simulation environment for testing VGA controller des
 
 Regardless of using GUI or command line, the following tools must be installed:
 
-| Tool | Ubuntu / Debian | macOS | Windows (WSL2 / MSYS2) |
-|------|-----------------|-------|------------------------|
-| **Verilator** | `sudo apt install verilator` | `brew install verilator` | `pacman -S verilator` |
-| **SDL2** | `sudo apt install libsdl2-dev` | `brew install sdl2` | `pacman -S sdl2` |
-| **make + g++** | `sudo apt install build-essential` | `xcode-select --install` | `pacman -S make gcc` |
+| Tool | Ubuntu / Debian | macOS | Windows (WSL2) | Windows (MSYS2) |
+|------|-----------------|-------|----------------|-----------------|
+| **Verilator** | `sudo apt install verilator` | `brew install verilator` | `sudo apt install verilator` | `pacman -S mingw-w64-x86_64-verilator` |
+| **SDL2** | `sudo apt install libsdl2-dev` | `brew install sdl2` | `sudo apt install libsdl2-dev` | `pacman -S mingw-w64-x86_64-SDL2` |
+| **make + g++** | `sudo apt install build-essential` | `xcode-select --install` | `sudo apt install build-essential` | `pacman -S make mingw-w64-x86_64-gcc` |
 
 **Verify installation:**
 ```bash
@@ -46,6 +46,78 @@ sdl2-config --version    # Should show 2.0+
 make --version           # Should show 3.81+
 g++ --version            # Should show 7.0+
 ```
+
+#### Ubuntu / Debian (Native or WSL2)
+
+```bash
+# Update package lists
+sudo apt-get update
+
+# Install all required tools at once
+sudo apt-get install -y build-essential verilator libsdl2-dev make
+```
+
+> **Note for Ubuntu 22.04:** If you encounter dependency errors when installing `libsdl2-dev` (e.g., `libpulse-dev` or `libudev-dev` version mismatches), add the updates repository:
+> ```bash
+> sudo tee -a /etc/apt/sources.list << 'EOF'
+> deb http://archive.ubuntu.com/ubuntu jammy-updates main universe
+> deb http://security.ubuntu.com/ubuntu jammy-security main universe
+> EOF
+> sudo apt update
+> sudo apt install libsdl2-dev
+> ```
+
+#### macOS
+
+1. **Install Xcode Command Line Tools** (includes GCC compiler)
+   ```bash
+   xcode-select --install
+   ```
+
+2. **Install Homebrew** (if not already installed)  
+   Visit https://brew.sh and follow the official installation instructions.
+
+3. **Install tools via Homebrew**
+   ```bash
+   brew install verilator sdl2
+   ```
+
+#### Windows (WSL2) — Recommended for beginners
+
+1. **Install WSL2 + Ubuntu**
+   ```powershell
+   # Run in PowerShell as Administrator
+   wsl --install -d Ubuntu-22.04
+   ```
+   Restart your computer and complete the Ubuntu setup.
+
+2. **Install simulation tools inside WSL2**
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential verilator libsdl2-dev make
+   ```
+
+3. **Configure WSL display environment (for GUI)**  
+   The `run_simulation.sh` script automatically configures `DISPLAY` and `XDG_RUNTIME_DIR`. No manual setup needed.
+
+#### Windows (MSYS2) — Native Windows without WSL
+
+1. **Install MSYS2**  
+   Download and install from https://www.msys2.org/
+
+2. **Open MSYS2 MinGW 64-bit terminal** and run:
+   ```bash
+   pacman -Syu
+   pacman -S mingw-w64-x86_64-verilator \
+             mingw-w64-x86_64-SDL2 \
+             mingw-w64-x86_64-gcc \
+             make
+   ```
+
+3. **Add MSYS2 to Windows PATH**
+   - `C:	ools/msys64/mingw64in`
+   - `C:	ools/msys64//usrin`
+   *(Adjust path based on your MSYS2 installation directory)*
 
 ### 2. GUI Launcher (Optional)
 
