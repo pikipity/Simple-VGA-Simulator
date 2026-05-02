@@ -5,7 +5,7 @@ A Verilator-based FPGA VGA simulation environment for testing VGA controller des
 ## Features
 
 - 🖥️ **Virtual VGA Display** - 640×480 @ 60Hz, RGB565 16-bit color
-- 🎮 **5 Virtual Buttons** - Keyboard `a` (reset), `s/d/f/g` (custom)
+- 🎮 **5 Virtual Buttons** - Mouse-clickable on-screen buttons (RESET, B2–B5)
 - 💡 **5 Virtual LEDs** - Visual output indicators
 - 🚀 **GUI Launcher** - One-click simulation with automatic compilation and signal mapping
 - ⚡ **Real-time Simulation** - Based on Verilator + SDL2 with interactive debugging
@@ -240,15 +240,19 @@ Simple-VGA-Simulator/
 | **Best For** | Students, beginners | CI/CD, advanced users |
 | **Requirements** | Simulation environment only | Simulation environment + terminal |
 
-## Key Mappings
+## Button Mapping
 
-| Key | Signal | Function | Active Level |
-|-----|--------|----------|--------------|
-| `a` | reset | System reset | Low (pressed = 0) |
-| `s` | B2 | Custom button 2 | Low |
-| `d` | B3 | Custom button 3 | Low |
-| `f` | B4 | Custom button 4 | Low |
-| `g` | B5 | Custom button 5 | Low |
+The simulator window displays 5 clickable square buttons below the LED area:
+
+| Button | Signal | Function | Active Level |
+|--------|--------|----------|--------------|
+| **RESET** | reset | System reset | Low (pressed = 0) |
+| **B2** | B2 | Custom button 2 | Low |
+| **B3** | B3 | Custom button 3 | Low |
+| **B4** | B4 | Custom button 4 | Low |
+| **B5** | B5 | Custom button 5 | Low |
+
+> Click and hold a button to activate (signal = 0). Release to deactivate (signal = 1). Dragging the mouse outside the button while held auto-releases it.
 
 ## License
 
