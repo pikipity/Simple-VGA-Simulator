@@ -26,7 +26,7 @@ jobs:
             archive_ext: tar.gz
           - os: windows-latest
             target: windows
-            build_path: build/windows/x64/Release
+            build_path: build/windows/x64/runner/Release
             artifact_name: vga-launcher-windows
             archive_ext: zip
           - os: macos-latest
@@ -68,6 +68,11 @@ jobs:
       - name: Build ${{ matrix.target }}
         working-directory: gui
         run: flutter build ${{ matrix.target }} --release
+
+      - name: List build output
+        working-directory: gui
+        shell: bash
+        run: find build -type d | head -20
 
       - name: Package (Linux)
         if: matrix.target == 'linux'
