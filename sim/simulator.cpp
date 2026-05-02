@@ -59,7 +59,8 @@ int g_window_width = 800;
 int g_window_height = 600;
 const int VGA_DISPLAY_WIDTH = 640;
 const int VGA_DISPLAY_HEIGHT = 480;
-const int LED_AREA_HEIGHT = 100;
+const int LED_AREA_HEIGHT = 80;
+const int BUTTON_AREA_HEIGHT = 100;  // Virtual button area height
 const int MARGIN_TOP = 35;      // Space for labels at top
 const int MARGIN = 20;          // Margin around display areas
 
@@ -110,11 +111,30 @@ std::atomic<bool> restart_triggered{false};
 // LED state variables
 std::atomic<int> leds_state[5] = {{1}, {1}, {1}, {1}, {1}}; // Initial inactive state
 
+// Virtual button structure for mouse input
+struct VirtualButton {
+    SDL_Rect rect;        // Button rectangle (computed at render time)
+    const char* label;    // Display label
+    int key_index;        // Index in keys[] array
+    bool pressed;         // Current visual/mouse state
+};
+
+static VirtualButton g_buttons[5] = {
+    {{0, 0, 0, 0}, "RESET", 0, false},
+    {{0, 0, 0, 0}, "B2",    1, false},
+    {{0, 0, 0, 0}, "B3",    2, false},
+    {{0, 0, 0, 0}, "B4",    3, false},
+    {{0, 0, 0, 0}, "B5",    4, false},
+};
+
+// Track which button is currently held by mouse (-1 = none)
+static int g_active_button = -1;
+
 // VSync counter for statistics
 static uint64_t g_vsync_count = 0;
 
 // Simple 5x3 bitmap font for labels (0 = empty, 1 = pixel)
-// Characters: V, G, A, L, E, D, 1, 2, 3, 4, 5
+// Characters: V, G, A, L, E, D, 1, 2, 3, 4, 5, B, R, S, T
 const uint8_t FONT_5x3[][5] = {
     {0b10001, 0b10001, 0b01010, 0b01010, 0b00100}, // V (0)
     {0b01110, 0b10000, 0b10111, 0b10001, 0b01110}, // G (1)
@@ -127,6 +147,10 @@ const uint8_t FONT_5x3[][5] = {
     {0b01110, 0b00001, 0b00110, 0b00001, 0b01110}, // 3 (8)
     {0b01001, 0b01001, 0b01111, 0b00001, 0b00001}, // 4 (9)
     {0b01111, 0b01000, 0b01110, 0b00001, 0b01110}, // 5 (10)
+    {0b11110, 0b10001, 0b11110, 0b10001, 0b11110}, // B (11)
+    {0b11110, 0b10001, 0b11110, 0b10010, 0b10001}, // R (12)
+    {0b01111, 0b10000, 0b01110, 0b00001, 0b11110}, // S (13)
+    {0b11111, 0b00100, 0b00100, 0b00100, 0b00100}, // T (14)
 };
 
 void draw_char(SDL_Surface* surface, int x, int y, char c, uint32_t color, int scale) {
@@ -143,6 +167,10 @@ void draw_char(SDL_Surface* surface, int x, int y, char c, uint32_t color, int s
         case '3': idx = 8; break;
         case '4': idx = 9; break;
         case '5': idx = 10; break;
+        case 'B': idx = 11; break;
+        case 'R': idx = 12; break;
+        case 'S': idx = 13; break;
+        case 'T': idx = 14; break;
     }
     if (idx < 0) return;
     
@@ -278,7 +306,65 @@ void render_sdl() {
         draw_label(g_screen_surface, label_x + 3 * label_char_w, label_y, digit_str, label_color, label_font_scale);
     }
     
-    // 8. Update window
+    // 8. Draw virtual button area (below LED area)
+    int button_y_start = led_y_start + LED_AREA_HEIGHT + MARGIN;
+    int button_area_h = g_window_height - button_y_start - MARGIN;
+    if (button_area_h < 60) button_area_h = 60;
+    
+    // Button area background
+    SDL_Rect button_bg = {0, button_y_start, g_window_width, button_area_h};
+    SDL_FillRect(g_screen_surface, &button_bg,
+        SDL_MapRGB(g_screen_surface->format, 40, 40, 40));
+    
+    // Calculate button layout: 5 square buttons, evenly spaced
+    int btn_gap = 12;  // Gap between buttons
+    int available_btn_width = g_window_width - MARGIN * 2;
+    int btn_size = (available_btn_width - btn_gap * 4) / 5;  // Square size
+    int btn_top_margin = (button_area_h - btn_size) / 2;
+    if (btn_top_margin < 5) btn_top_margin = 5;
+    if (btn_size > button_area_h - btn_top_margin * 2) {
+        btn_size = button_area_h - btn_top_margin * 2;
+    }
+    
+    // Text scale based on button size
+    int btn_text_scale = btn_size / 28;
+    if (btn_text_scale < 1) btn_text_scale = 1;
+    int btn_char_w = 6 * btn_text_scale;
+    
+    for (int i = 0; i < 5; i++) {
+        int bx = MARGIN + i * (btn_size + btn_gap);
+        int by = button_y_start + btn_top_margin;
+        g_buttons[i].rect = {bx, by, btn_size, btn_size};
+        
+        // Colors: obvious difference between pressed and unpressed
+        uint32_t border_color, bg_color, text_color;
+        if (g_buttons[i].pressed) {
+            // Pressed: bright green background, white border, white text
+            border_color = SDL_MapRGB(g_screen_surface->format, 255, 255, 255);
+            bg_color     = SDL_MapRGB(g_screen_surface->format, 0, 180, 0);
+            text_color   = SDL_MapRGB(g_screen_surface->format, 255, 255, 255);
+        } else {
+            // Unpressed: dark gray background, gray border, light gray text
+            border_color = SDL_MapRGB(g_screen_surface->format, 120, 120, 120);
+            bg_color     = SDL_MapRGB(g_screen_surface->format, 60, 60, 60);
+            text_color   = SDL_MapRGB(g_screen_surface->format, 200, 200, 200);
+        }
+        
+        // Draw border (outer rect)
+        SDL_Rect border_rect = {bx - 2, by - 2, btn_size + 4, btn_size + 4};
+        SDL_FillRect(g_screen_surface, &border_rect, border_color);
+        
+        // Draw background (inner rect)
+        SDL_FillRect(g_screen_surface, &g_buttons[i].rect, bg_color);
+        
+        // Draw label centered
+        int text_w = strlen(g_buttons[i].label) * btn_char_w;
+        int text_x = bx + (btn_size - text_w) / 2;
+        int text_y = by + (btn_size - 5 * btn_text_scale) / 2;
+        draw_label(g_screen_surface, text_x, text_y, g_buttons[i].label, text_color, btn_text_scale);
+    }
+    
+    // 9. Update window
     SDL_UpdateWindowSurface(g_window);
 }
 
@@ -319,27 +405,6 @@ void run_event_loop() {
                         break;
                     case SDL_KEYDOWN:
                         switch (e.key.keysym.sym) {
-                            case SDLK_a:
-                                keys[0].store(0, std::memory_order_release);
-                                restart_triggered.store(true, std::memory_order_release);
-                                std::cerr << "[Input] Key 'a' pressed (reset)\n";
-                                break;
-                            case SDLK_s: 
-                                keys[1].store(0); 
-                                std::cerr << "[Input] Key 's' pressed (B2)\n";
-                                break;
-                            case SDLK_d: 
-                                keys[2].store(0); 
-                                std::cerr << "[Input] Key 'd' pressed (B3)\n";
-                                break;
-                            case SDLK_f: 
-                                keys[3].store(0); 
-                                std::cerr << "[Input] Key 'f' pressed (B4)\n";
-                                break;
-                            case SDLK_g: 
-                                keys[4].store(0); 
-                                std::cerr << "[Input] Key 'g' pressed (B5)\n";
-                                break;
                             case SDLK_ESCAPE:
                             case SDLK_q:
                                 std::cerr << "[Input] Quit key pressed\n";
@@ -347,13 +412,49 @@ void run_event_loop() {
                                 break;
                         }
                         break;
-                    case SDL_KEYUP:
-                        switch (e.key.keysym.sym) {
-                            case SDLK_a: keys[0].store(1); break;
-                            case SDLK_s: keys[1].store(1); break;
-                            case SDLK_d: keys[2].store(1); break;
-                            case SDLK_f: keys[3].store(1); break;
-                            case SDLK_g: keys[4].store(1); break;
+                    case SDL_MOUSEBUTTONDOWN:
+                        if (e.button.button == SDL_BUTTON_LEFT) {
+                            int mx = e.button.x;
+                            int my = e.button.y;
+                            for (int i = 0; i < 5; i++) {
+                                SDL_Rect* r = &g_buttons[i].rect;
+                                if (mx >= r->x && mx < r->x + r->w &&
+                                    my >= r->y && my < r->y + r->h) {
+                                    g_buttons[i].pressed = true;
+                                    g_active_button = i;
+                                    keys[i].store(0, std::memory_order_release);
+                                    if (i == 0) {
+                                        restart_triggered.store(true, std::memory_order_release);
+                                    }
+                                    std::cerr << "[Input] Button '" << g_buttons[i].label << "' pressed\n";
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case SDL_MOUSEBUTTONUP:
+                        if (e.button.button == SDL_BUTTON_LEFT && g_active_button >= 0) {
+                            int i = g_active_button;
+                            g_buttons[i].pressed = false;
+                            keys[i].store(1, std::memory_order_release);
+                            std::cerr << "[Input] Button '" << g_buttons[i].label << "' released\n";
+                            g_active_button = -1;
+                        }
+                        break;
+                    case SDL_MOUSEMOTION:
+                        // If mouse drags out of the active button, auto-release
+                        if (g_active_button >= 0) {
+                            int mx = e.motion.x;
+                            int my = e.motion.y;
+                            SDL_Rect* r = &g_buttons[g_active_button].rect;
+                            if (mx < r->x || mx >= r->x + r->w ||
+                                my < r->y || my >= r->y + r->h) {
+                                int i = g_active_button;
+                                g_buttons[i].pressed = false;
+                                keys[i].store(1, std::memory_order_release);
+                                std::cerr << "[Input] Button '" << g_buttons[i].label << "' released (drag out)\n";
+                                g_active_button = -1;
+                            }
                         }
                         break;
                 }
@@ -602,7 +703,7 @@ int main(int argc, char** argv) {
     // 2. Create window (add ALLOW_HIGHDPI for macOS Retina support)
     g_window = SDL_CreateWindow("VGA and LED Simulator (SDL2) - Press ESC or Q to exit",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        800, 600,
+        800, 850,
         SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
         
     if (!g_window) {
