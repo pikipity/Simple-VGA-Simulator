@@ -55,7 +55,7 @@ This manual is designed for FPGA course students, providing detailed instruction
 | 功能 / Feature | 说明 / Description |
 |---------------|-------------------|
 | 🖥️ VGA 显示 / VGA Display | 640×480 分辨率，60Hz 刷新率，RGB565 16位彩色 / 640×480 resolution, 60Hz refresh rate, RGB565 16-bit color |
-| 🎮 虚拟按键 / Virtual Buttons | 5 个按键：Reset(a), B2(s), B3(d), B4(f), B5(g) / 5 buttons: Reset(a), B2(s), B3(d), B4(f), B5(g) |
+| 🎮 虚拟按键 / Virtual Buttons | 5 个鼠标点击按钮：RESET, B2, B3, B4, B5 / 5 mouse-clickable buttons: RESET, B2, B3, B4, B5 |
 | 💡 虚拟 LED / Virtual LEDs | 5 个 LED 输出显示 / 5 LED output indicators |
 | ⚡ 实时仿真 / Real-time Simulation | 基于 Verilator + SDL2 / Based on Verilator + SDL2 |
 
@@ -321,7 +321,7 @@ The easiest way is to download the pre-built GUI Launcher, no manual CLI configu
 
 `DevelopmentBoard.v` is the bridge between your design and the simulator. It defines:
 
-- **输入 / Inputs**: 时钟(clk)、复位(reset)、4个自定义按键(B2-B5)
+- **输入 / Inputs**: 时钟(clk)、复位(reset)、4 个自定义按键输入(B2-B5)（通过鼠标点击模拟器窗口底部按钮触发）
 - **输出 / Outputs**: VGA 信号(h_sync, v_sync, rgb)、5个 LED
 
 **开发板规格 / Development Board Specifications:**
@@ -338,15 +338,22 @@ The easiest way is to download the pre-built GUI Launcher, no manual CLI configu
 
 ![Schematic Diagram](SchematicDiagram/SchematicDiagram.png)
 
-**键盘映射 / Keyboard Mapping:**
+**按钮映射 / Button Mapping:**
 
-| 键盘按键 / Key | 信号 / Signal | 功能 / Function |
+仿真器窗口底部显示 5 个正方形按钮，点击即可触发对应信号：
+
+The simulator window displays 5 square buttons at the bottom. Click to trigger the corresponding signal:
+
+| 按钮 / Button | 信号 / Signal | 功能 / Function |
 |--------------|--------------|----------------|
-| `a` | reset | 系统复位 / System reset |
-| `s` | B2 | 自定义按键 2 / Custom button 2 |
-| `d` | B3 | 自定义按键 3 / Custom button 3 |
-| `f` | B4 | 自定义按键 4 / Custom button 4 |
-| `g` | B5 | 自定义按键 5 / Custom button 5 |
+| **RESET** | reset | 系统复位 / System reset |
+| **B2** | B2 | 自定义按键 2 / Custom button 2 |
+| **B3** | B3 | 自定义按键 3 / Custom button 3 |
+| **B4** | B4 | 自定义按键 4 / Custom button 4 |
+| **B5** | B5 | 自定义按键 5 / Custom button 5 |
+
+> 按住按钮时信号为 0（低电平有效），松开时信号为 1。鼠标拖出按钮区域会自动释放。  
+> Hold to activate (signal = 0, active low), release to deactivate (signal = 1). Dragging outside auto-releases.
 
 ### 6.2 准备你的 Verilog 代码 / Preparing Your Verilog Code
 
@@ -433,10 +440,10 @@ The GUI Launcher automatically handles signal mapping, `DevelopmentBoard.v` gene
    | `hsync` | `h_sync` | 水平同步 / Horizontal sync |
    | `vsync` | `v_sync` | 垂直同步 / Vertical sync |
    | `rgb` | `rgb` | RGB565 颜色输出 / RGB565 color output |
-   | `up`, `B2` | `B2` | 自定义按键 2 / Custom button 2 |
-   | `down`, `B3` | `B3` | 自定义按键 3 / Custom button 3 |
-   | `left`, `B4` | `B4` | 自定义按键 4 / Custom button 4 |
-   | `right`, `B5` | `B5` | 自定义按键 5 / Custom button 5 |
+   | `B2` | `B2` | 自定义按键 2 / Custom button 2 |
+   | `B3` | `B3` | 自定义按键 3 / Custom button 3 |
+   | `B4` | `B4` | 自定义按键 4 / Custom button 4 |
+   | `B5` | `B5` | 自定义按键 5 / Custom button 5 |
    | `led1` ~ `led5` | `led1` ~ `led5` | LED 输出 / LED outputs |
 
 5. **🚀 一键运行 / One-Click Run**
@@ -498,7 +505,7 @@ The simulator includes two example projects. We recommend running these first to
 
 5. **预期结果 / Expected Result:**
    - 紫色背景上的蓝色小球 / Blue ball on purple background
-   - 按 `s`/`d`/`f`/`g` 键移动小球 / Press `s`/`d`/`f`/`g` to move the ball
+   - 点击底部 **B2** / **B3** / **B4** / **B5** 按钮移动小球 / Click the **B2** / **B3** / **B4** / **B5** buttons at the bottom to move the ball
    - 对应 LED 会亮起 / Corresponding LEDs light up
 
 ---
@@ -562,18 +569,18 @@ Check if your VGA controller timing matches the 640×480@60Hz standard:
 | V_FRONT | 2 lines |
 | V_TOTAL | 525 lines |
 
-#### Q5: 按键没有响应
+#### Q5: 按钮按下没有响应
 
-**原因 / Cause**: 按键逻辑可能不正确  
+**原因 / Cause**: 按钮逻辑可能不正确  
 **解决 / Solution**: 确保你的设计使用低电平有效逻辑（按下为 0）  
 Ensure your design uses active-low logic (pressed = 0):
 ```verilog
 // 正确 / Correct
-input wire up,  // 按下时 up = 0 / up = 0 when pressed
+input wire B2,  // 按下时 B2 = 0 / B2 = 0 when pressed
 
 // 在你的模块中 / In your module:
 always @(posedge clk) begin
-    if (!up)  // 检测按键按下 / Detect button press
+    if (!B2)  // 检测按钮按下 / Detect button press
         // ...
 end
 ```
