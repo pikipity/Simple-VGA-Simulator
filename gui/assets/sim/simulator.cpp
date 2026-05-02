@@ -40,106 +40,11 @@ void cleanup_simulation() {
     SDL_Quit();
 }
 
-// Real-time synchronization class
-// Synchronizes simulation time with wall clock time
-class RealTimeSync {
-    std::chrono::steady_clock::time_point epoch;
-    uint64_t sim_cycles = 0;
-    static constexpr uint64_t NS_PER_CYCLE = 320;  // 3.125MHz = 320ns/cycle (reduced for VM performance)
-    
-    // Lag control parameters
-    static constexpr uint64_t MAX_LAG_NS = 50000000;      // 50ms: maximum allowed lag
-    static constexpr uint64_t WARN_LAG_NS = 1000000;      // 1ms: warning threshold
-    
-    // Debug statistics
-    uint64_t lag_reset_count = 0;           // Reset count
-    uint64_t total_lag_ns = 0;              // Cumulative lag time
-    uint64_t max_lag_ns = 0;                // Maximum lag recorded
-    uint64_t cycle_count = 0;               // Total tick count
-    uint64_t wait_count = 0;                // Busy-wait count
-    uint64_t warn_count = 0;                // Warning count
-    
-public:
-    RealTimeSync() : epoch(std::chrono::steady_clock::now()) {}
-    
-    void reset() {
-        epoch = std::chrono::steady_clock::now();
-        sim_cycles = 0;
-        lag_reset_count = 0;
-        total_lag_ns = 0;
-        max_lag_ns = 0;
-        cycle_count = 0;
-        wait_count = 0;
-        warn_count = 0;
-        std::cerr << "[RealTimeSync] Reset time baseline\n";
-    }
-    
-    void tick() {
-        cycle_count++;
-        sim_cycles++;
-        uint64_t target_ns = sim_cycles * NS_PER_CYCLE;
-        
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            now - epoch).count();
-        
-        int64_t lag_ns = elapsed_ns - target_ns;
-        
-        if (lag_ns < 0) {
-            // Simulation ahead: busy-wait until real time catches up
-            wait_count++;
-            auto target = now + std::chrono::nanoseconds(-lag_ns);
-            while (std::chrono::steady_clock::now() < target) {
-                #if defined(__x86_64__)
-                    __builtin_ia32_pause();
-                #elif defined(__aarch64__) || defined(_M_ARM64)
-                    __asm__ __volatile__("yield");
-                #endif
-            }
-        } 
-        else if ((uint64_t)lag_ns > MAX_LAG_NS) {
-            // Severe lag: reset time baseline
-            lag_reset_count++;
-            std::cerr << "[RealTimeSync] LAG RESET #" << lag_reset_count 
-                      << ": lag=" << lag_ns / 1000000 << "ms"
-                      << " max_seen=" << max_lag_ns / 1000000 << "ms"
-                      << " cycles=" << cycle_count << "\n";
-            epoch = now;
-            sim_cycles = 0;
-        } 
-        else if ((uint64_t)lag_ns > WARN_LAG_NS) {
-            // Minor lag: count but don't output frequently (every 20 times)
-            warn_count++;
-            total_lag_ns += lag_ns;
-            if ((uint64_t)lag_ns > max_lag_ns) max_lag_ns = lag_ns;
-            
-            if (warn_count % 20 == 1) {
-                std::cerr << "[RealTimeSync] Lag warn #" << warn_count
-                          << ": current=" << lag_ns / 1000 << "us"
-                          << " avg=" << (total_lag_ns / warn_count) / 1000 << "us"
-                          << " max=" << max_lag_ns / 1000 << "us\n";
-            }
-        }
-    }
-    
-    // Print statistics report
-    void printStats() const {
-        std::cerr << "\n========== RealTimeSync Stats ==========\n";
-        std::cerr << "Total cycles:    " << cycle_count << "\n";
-        std::cerr << "Wait cycles:     " << wait_count << " (" 
-                  << (cycle_count > 0 ? (wait_count * 100 / cycle_count) : 0) << "%)\n";
-        std::cerr << "Lag resets:      " << lag_reset_count << "\n";
-        std::cerr << "Lag warnings:    " << warn_count << "\n";
-        std::cerr << "Max lag seen:    " << max_lag_ns / 1000 << "us\n";
-        std::cerr << "Avg lag (warn):  " << (warn_count > 0 ? total_lag_ns / warn_count : 0) / 1000 << "us\n";
-        std::cerr << "========================================\n";
-    }
-};
-
-static RealTimeSync g_sync;
+// Real-time synchronization disabled for VM/WSL performance
+// Simulation runs at full speed with periodic yield()
 
 void wait_10ns() {
-    g_sync.tick();
+    // No-op: simulation runs at full speed
 }
 
 VDevelopmentBoard* display;              // instantiation of the model
@@ -646,7 +551,6 @@ void simulation_loop() {
 
     display = new VDevelopmentBoard;
     reset();
-    g_sync.reset();
     
     // Statistics
     uint64_t iteration_count = 0;
@@ -662,6 +566,11 @@ void simulation_loop() {
         tick();
         sample_pixel();
         iteration_count++;
+        
+        // Yield CPU periodically to prevent starving the render thread
+        if ((iteration_count & 0x3FF) == 0) {
+            std::this_thread::yield();
+        }
     }
 
     auto sim_end_time = std::chrono::steady_clock::now();
@@ -675,8 +584,6 @@ void simulation_loop() {
     std::cerr << "Final time stamp:    " << main_time << "\n";
     std::cerr << "=============================================\n";
     
-    g_sync.printStats();
-
     display->final();
     delete display;
     

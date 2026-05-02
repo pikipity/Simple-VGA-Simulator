@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# WSL 显示环境自动配置（必须在任何命令之前）
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    if [ -z "$DISPLAY" ]; then
+        export DISPLAY=:0
+    fi
+    if [ -z "$XDG_RUNTIME_DIR" ]; then
+        export XDG_RUNTIME_DIR=/tmp/runtime-$UID
+        mkdir -p $XDG_RUNTIME_DIR
+    fi
+    if [ -z "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/wayland-0" ]; then
+        export WAYLAND_DISPLAY=wayland-0
+    fi
+fi
+
 # 用法: ./run_simulation.sh [include_directory_path]
 
 # 检测操作系统
