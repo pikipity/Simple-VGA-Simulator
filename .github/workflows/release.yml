@@ -72,7 +72,13 @@ jobs:
       - name: List build output
         working-directory: gui
         shell: bash
-        run: find build -type d | head -20
+        run: |
+          echo "=== build/ top level ==="
+          ls -la build/ 2>/dev/null || true
+          echo "=== Release directories ==="
+          find build -maxdepth 4 -type d -iname "*release*" 2>/dev/null || true
+          echo "=== exe/app files ==="
+          find build -maxdepth 5 \( -name "*.exe" -o -name "*.app" \) 2>/dev/null || true
 
       - name: Package (Linux)
         if: matrix.target == 'linux'
