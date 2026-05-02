@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# WSL 显示环境自动配置（必须在任何命令之前）
+# WSL 鏄剧ず鐜鑷姩閰嶇疆锛堝繀椤诲湪浠讳綍鍛戒护涔嬪墠锛?
 if grep -qi microsoft /proc/version 2>/dev/null; then
     if [ -z "$DISPLAY" ]; then
         export DISPLAY=:0
@@ -14,9 +14,9 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     fi
 fi
 
-# 用法: ./run_simulation.sh [include_directory_path]
+# 鐢ㄦ硶: ./run_simulation.sh [include_directory_path]
 
-# 检测操作系统
+# 妫€娴嬫搷浣滅郴缁?
 OS=$(uname -s)
 echo "Detected OS: $OS"
 
@@ -48,22 +48,22 @@ for flag in $SDL_LIBS; do
     LDFLAGS="$LDFLAGS -LDFLAGS $flag"
 done
 
-# 获取脚本所在的绝对路径
+# 鑾峰彇鑴氭湰鎵€鍦ㄧ殑缁濆璺緞
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-# 设置默认路径为脚本所在目录
+# 璁剧疆榛樿璺緞涓鸿剼鏈墍鍦ㄧ洰褰?
 DEFAULT_INCLUDE_DIR="$SCRIPT_DIR"
 
-# 检查用户是否提供了路径参数
+# 妫€鏌ョ敤鎴锋槸鍚︽彁渚涗簡璺緞鍙傛暟
 if [ $# -eq 0 ]; then
-    # 用户没有提供参数，使用脚本所在路径
+    # 鐢ㄦ埛娌℃湁鎻愪緵鍙傛暟锛屼娇鐢ㄨ剼鏈墍鍦ㄨ矾寰?
     INCLUDE_DIR="$DEFAULT_INCLUDE_DIR"
     echo "NOTE: No include directory path is provided, the directory where the script is located is used: $INCLUDE_DIR"
 else
-    # 用户提供了参数，使用用户指定的路径
+    # 鐢ㄦ埛鎻愪緵浜嗗弬鏁帮紝浣跨敤鐢ㄦ埛鎸囧畾鐨勮矾寰?
     INCLUDE_DIR="$1"
     
-    # 检查用户提供的路径是否存在
+    # 妫€鏌ョ敤鎴锋彁渚涚殑璺緞鏄惁瀛樺湪
     if [ ! -d "$INCLUDE_DIR" ]; then
         echo "Error: '$INCLUDE_DIR' does not exist"
         echo "Tip: You can use the directory where the script is located without providing any parameters, or provide a valid directory path"
@@ -74,7 +74,7 @@ fi
 echo "Start simulation..."
 echo "Include directories used: $INCLUDE_DIR"
 
-# 检查必要的文件是否存在[6](@ref)
+# 妫€鏌ュ繀瑕佺殑鏂囦欢鏄惁瀛樺湪[6](@ref)
 if [ ! -f "simulator.cpp" ]; then
     echo "Error: simulator.cpp does not exist in the current directory"
     exit 1
@@ -92,7 +92,7 @@ OBJ_DIR="obj_dir"
 if [ -d "$OBJ_DIR" ]; then
     echo "Remove $OBJ_DIR ..."
     if rm -rf "$OBJ_DIR"; then
-        echo "✓ Sucessfully remove $OBJ_DIR "
+        echo "鉁?Sucessfully remove $OBJ_DIR "
     else
         echo "Warning: Problem encountered while deleting $OBJ_DIR folder, but continuing the process..."
     fi
@@ -101,7 +101,7 @@ else
 fi
 
 
-# 第一步：使用Verilator编译Verilog代码
+# 绗竴姝ワ細浣跨敤Verilator缂栬瘧Verilog浠ｇ爜
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
 VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS")
@@ -109,7 +109,7 @@ VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
 
-# 检查Verilator是否成功执行
+# 妫€鏌erilator鏄惁鎴愬姛鎵ц
 if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     echo "Error: Verilator compilation failed!"
     echo "Possible causes:"
@@ -124,36 +124,36 @@ if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     exit 1
 fi
 
-echo "✓ Verilator compilation completed successfully!"
+echo "鉁?Verilator compilation completed successfully!"
 
-# 第二步：构建仿真可执行文件
+# 绗簩姝ワ細鏋勫缓浠跨湡鍙墽琛屾枃浠?
 echo "---------------------------------"
 echo "Step 2: Build the simulation executable..."
 # Export SDL flags for make
 export CXXFLAGS="$SDL_CFLAGS"
 make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
 
-# 检查make是否成功构建
+# 妫€鏌ake鏄惁鎴愬姛鏋勫缓
 if [ $? -ne 0 ]; then
     echo "Error: Make build failed!"
     echo "Please check the compilation error message above"
     exit 1
 fi
 
-echo "✓ Simulation executable file built successfully!"
+echo "鉁?Simulation executable file built successfully!"
 
-# 第三步：运行仿真
+# 绗笁姝ワ細杩愯浠跨湡
 echo "---------------------------------"
 echo "Step 3: Start the simulation..."
 echo "----------------------------------------"
 obj_dir/VDevelopmentBoard
 
-# 检查仿真是否成功运行
+# 妫€鏌ヤ豢鐪熸槸鍚︽垚鍔熻繍琛?
 SIMULATION_EXIT_CODE=$?
 echo "----------------------------------------"
 
 if [ $SIMULATION_EXIT_CODE -ne 0 ]; then
     echo "WARNING: Simulation execution exit code: $SIMULATION_EXIT_CODE"
 else
-    echo "✓ Simulation execution completed!"
+    echo "鉁?Simulation execution completed!"
 fi
