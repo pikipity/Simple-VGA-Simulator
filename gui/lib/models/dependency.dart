@@ -33,6 +33,6 @@ class Dependency {
   String get displayVersion {
     if (isInstalled && version != null) return version!;
     if (wslAvailable && wslVersion != null) return '$wslVersion (WSL)';
-    return '未安装';
+    return 'Not Installed';
   }
 }

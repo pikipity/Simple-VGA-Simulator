@@ -22,7 +22,7 @@ class DependencyCheckCard extends StatelessWidget {
                 const Icon(Icons.security, size: 20),
                 const SizedBox(width: 8),
                 const Text(
-                  'Step 0: 环境检查',
+                  'Step 0: Environment Check',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
@@ -36,13 +36,13 @@ class DependencyCheckCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => state.checkDependencies(),
                     icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('重新检查'),
+                    label: const Text('Recheck'),
                   ),
               ],
             ),
             const SizedBox(height: 12),
             if (state.dependencies.isEmpty)
-              const Text('点击"重新检查"验证环境')
+              const Text('Click "Recheck" to verify environment')
             else
               ...state.dependencies.map((dep) {
                 final ok = dep.isFullySatisfied;
@@ -77,7 +77,7 @@ class DependencyCheckCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
-                  '部分依赖未安装，请参考各工具的安装指南。',
+                  'Some dependencies are missing. Please refer to the installation guide for each tool.',
                   style: TextStyle(color: Colors.red, fontSize: 12),
                 ),
               ),

@@ -12,7 +12,7 @@ class PlatformHelper {
     return path;
   }
 
-  /// Windows 路径转 WSL 路径
+  /// Convert Windows path to WSL path
   /// e.g. "C:\Users\student\project" -> "/mnt/c/Users/student/project"
   static String? toWslPath(String windowsPath) {
     if (!isWindows) return windowsPath;

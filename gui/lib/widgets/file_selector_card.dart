@@ -21,7 +21,7 @@ class FileSelectorCard extends StatelessWidget {
                 Icon(Icons.folder_open, size: 20),
                 SizedBox(width: 8),
                 Text(
-                  'Step 1: 选择项目目录',
+                  'Step 1: Select Project Directory',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -31,7 +31,7 @@ class FileSelectorCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    state.project?.rtlDirectory ?? '未选择',
+                    state.project?.rtlDirectory ?? 'Not selected',
                     style: TextStyle(
                       color: state.project == null ? Colors.grey : Colors.black,
                     ),
@@ -47,7 +47,7 @@ class FileSelectorCard extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.folder_open, size: 16),
-                  label: const Text('浏览...'),
+                  label: const Text('Browse...'),
                 ),
               ],
             ),
@@ -59,7 +59,7 @@ class FileSelectorCard extends StatelessWidget {
             else if (state.scannedModules.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(
-                '检测到的 Verilog 文件:',
+                'Detected Verilog files:',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 4),

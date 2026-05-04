@@ -85,7 +85,7 @@ const int H_ACTIVE_START = 144; // H_SYNC(96) + H_BACK(40) + H_LEFT(8) from Veri
 const int V_ACTIVE_START = 35;  // V_SYNC(2) + V_BACK(25) + V_TOP(8) from Verilog
 
 // pixels are buffered here - double buffering for thread safety
-// 一维数组布局: [x * ACTIVE_HEIGHT * 3 + y * 3 + channel]
+// 1D array layout: [x * ACTIVE_HEIGHT * 3 + y * 3 + channel]
 static float buffer_a[ACTIVE_WIDTH * ACTIVE_HEIGHT * 3] = {};
 static float buffer_b[ACTIVE_WIDTH * ACTIVE_HEIGHT * 3] = {};
 
@@ -102,9 +102,9 @@ void init_rgb_lookup_tables() {
         RGB6_TO_FLOAT[i] = float(i) / 63.0f;
     }
 }
-static std::atomic<float*> write_buffer{buffer_a};  // 模拟线程写入
-static std::atomic<float*> read_buffer{buffer_b};   // GLUT线程读取
-static std::atomic<bool> buffer_swap_pending{false}; // 新帧就绪标记
+static std::atomic<float*> write_buffer{buffer_a};  // Simulation thread writes
+static std::atomic<float*> read_buffer{buffer_b};   // Render thread reads
+static std::atomic<bool> buffer_swap_pending{false}; // New frame ready flag
 
 std::atomic<bool> restart_triggered{false};
 
@@ -369,7 +369,7 @@ void render_sdl() {
 }
 
 // handle up/down/left/right arrow keys
-std::atomic<int> keys[5] = {{1}, {1}, {1}, {1}, {1}}; // 初始化为未激活状态
+std::atomic<int> keys[5] = {{1}, {1}, {1}, {1}, {1}}; // Initialized to inactive state
 
 // SDL2 event loop - replaces GLUT callback-based event handling
 void run_event_loop() {
@@ -561,7 +561,7 @@ void tick() {
     display->clk = 1;
     display_eval();
     
-    // 下降沿
+    // Falling edge
     wait_10ns();
     main_time++;
     display->clk = 0;
@@ -570,7 +570,7 @@ void tick() {
 
 // globally reset the model
 void reset() {
-    display->reset = 0; // 复位信号初始为高电平（不复位）
+    display->reset = 0; // Reset signal initially high (not resetting)
     display->B2 = 1;
     display->B3 = 1;
     display->B4 = 1;

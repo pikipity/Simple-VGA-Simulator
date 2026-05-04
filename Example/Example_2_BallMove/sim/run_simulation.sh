@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# WSL 鏄剧ず鐜鑷姩閰嶇疆锛堝繀椤诲湪浠讳綍鍛戒护涔嬪墠锛?
+# WSL display environment auto-configuration (must be before any command)
 if grep -qi microsoft /proc/version 2>/dev/null; then
     if [ -z "$DISPLAY" ]; then
         export DISPLAY=:0
@@ -14,9 +14,9 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     fi
 fi
 
-# 鐢ㄦ硶: ./run_simulation.sh [include_directory_path]
+# Usage: ./run_simulation.sh [include_directory_path]
 
-# 妫€娴嬫搷浣滅郴缁?
+# Detect operating system
 OS=$(uname -s)
 echo "Detected OS: $OS"
 
@@ -48,22 +48,22 @@ for flag in $SDL_LIBS; do
     LDFLAGS="$LDFLAGS -LDFLAGS $flag"
 done
 
-# 鑾峰彇鑴氭湰鎵€鍦ㄧ殑缁濆璺緞
+# Get the absolute path of the script directory
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-# 璁剧疆榛樿璺緞涓鸿剼鏈墍鍦ㄧ洰褰?
+# Set default path to the script directory
 DEFAULT_INCLUDE_DIR="$SCRIPT_DIR"
 
-# 妫€鏌ョ敤鎴锋槸鍚︽彁渚涗簡璺緞鍙傛暟
+# Check if user provided a path argument
 if [ $# -eq 0 ]; then
-    # 鐢ㄦ埛娌℃湁鎻愪緵鍙傛暟锛屼娇鐢ㄨ剼鏈墍鍦ㄨ矾寰?
+    # User did not provide an argument, use the script directory
     INCLUDE_DIR="$DEFAULT_INCLUDE_DIR"
     echo "NOTE: No include directory path is provided, the directory where the script is located is used: $INCLUDE_DIR"
 else
-    # 鐢ㄦ埛鎻愪緵浜嗗弬鏁帮紝浣跨敤鐢ㄦ埛鎸囧畾鐨勮矾寰?
+    # User provided an argument, use the specified path
     INCLUDE_DIR="$1"
     
-    # 妫€鏌ョ敤鎴锋彁渚涚殑璺緞鏄惁瀛樺湪
+    # Check if the provided path exists
     if [ ! -d "$INCLUDE_DIR" ]; then
         echo "Error: '$INCLUDE_DIR' does not exist"
         echo "Tip: You can use the directory where the script is located without providing any parameters, or provide a valid directory path"
@@ -74,7 +74,7 @@ fi
 echo "Start simulation..."
 echo "Include directories used: $INCLUDE_DIR"
 
-# 妫€鏌ュ繀瑕佺殑鏂囦欢鏄惁瀛樺湪[6](@ref)
+# Check if required files exist
 if [ ! -f "simulator.cpp" ]; then
     echo "Error: simulator.cpp does not exist in the current directory"
     exit 1
@@ -92,7 +92,7 @@ OBJ_DIR="obj_dir"
 if [ -d "$OBJ_DIR" ]; then
     echo "Remove $OBJ_DIR ..."
     if rm -rf "$OBJ_DIR"; then
-        echo "鉁?Sucessfully remove $OBJ_DIR "
+        echo "✓ Sucessfully remove $OBJ_DIR "
     else
         echo "Warning: Problem encountered while deleting $OBJ_DIR folder, but continuing the process..."
     fi
@@ -101,7 +101,7 @@ else
 fi
 
 
-# 绗竴姝ワ細浣跨敤Verilator缂栬瘧Verilog浠ｇ爜
+# Step 1: Compile Verilog code with Verilator
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
 VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS")
@@ -109,7 +109,7 @@ VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
 
-# 妫€鏌erilator鏄惁鎴愬姛鎵ц
+# Check if Verilator executed successfully
 if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     echo "Error: Verilator compilation failed!"
     echo "Possible causes:"
@@ -124,36 +124,36 @@ if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     exit 1
 fi
 
-echo "鉁?Verilator compilation completed successfully!"
+echo "✓ Verilator compilation completed successfully!"
 
-# 绗簩姝ワ細鏋勫缓浠跨湡鍙墽琛屾枃浠?
+# Step 2: Build simulation executable
 echo "---------------------------------"
 echo "Step 2: Build the simulation executable..."
 # Export SDL flags for make
 export CXXFLAGS="$SDL_CFLAGS"
 make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
 
-# 妫€鏌ake鏄惁鎴愬姛鏋勫缓
+# Check if make built successfully
 if [ $? -ne 0 ]; then
     echo "Error: Make build failed!"
     echo "Please check the compilation error message above"
     exit 1
 fi
 
-echo "鉁?Simulation executable file built successfully!"
+echo "✓ Simulation executable file built successfully!"
 
-# 绗笁姝ワ細杩愯浠跨湡
+# Step 3: Run simulation
 echo "---------------------------------"
 echo "Step 3: Start the simulation..."
 echo "----------------------------------------"
 obj_dir/VDevelopmentBoard
 
-# 妫€鏌ヤ豢鐪熸槸鍚︽垚鍔熻繍琛?
+# Check if simulation ran successfully
 SIMULATION_EXIT_CODE=$?
 echo "----------------------------------------"
 
 if [ $SIMULATION_EXIT_CODE -ne 0 ]; then
     echo "WARNING: Simulation execution exit code: $SIMULATION_EXIT_CODE"
 else
-    echo "鉁?Simulation execution completed!"
+    echo "✓ Simulation execution completed!"
 fi

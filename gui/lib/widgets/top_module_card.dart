@@ -20,7 +20,7 @@ class TopModuleCard extends StatelessWidget {
                 Icon(Icons.account_tree, size: 20),
                 SizedBox(width: 8),
                 Text(
-                  'Step 2: 指定 Top Module',
+                  'Step 2: Specify Top Module',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -28,13 +28,13 @@ class TopModuleCard extends StatelessWidget {
             const SizedBox(height: 12),
             if (state.scannedModules.isEmpty)
               const Text(
-                '请先选择项目目录',
+                'Please select a project directory first',
                 style: TextStyle(color: Colors.grey),
               )
             else
               DropdownButtonFormField<String>(
                 value: state.selectedModule?.name,
-                hint: const Text('选择 Top Module'),
+                hint: const Text('Select Top Module'),
                 items: state.scannedModules.map((m) {
                   final fileName = m.filePath.split('\\').last.split('/').last;
                   return DropdownMenuItem(
@@ -49,7 +49,7 @@ class TopModuleCard extends StatelessWidget {
             if (state.selectedModule != null) ...[
               const SizedBox(height: 12),
               const Text(
-                '模块端口:',
+                'Module Ports:',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 4),
