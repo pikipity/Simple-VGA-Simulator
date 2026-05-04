@@ -16,6 +16,17 @@ fi
 
 # Usage: ./run_simulation.sh [include_directory_path]
 
+# Get the absolute path of the script directory
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# Check for spaces in the script directory path (GNU Make limitation)
+if [[ "$SCRIPT_DIR" == *" "* ]]; then
+    echo "Error: The project path contains spaces, which is not supported by GNU Make."
+    echo "Current path: $SCRIPT_DIR"
+    echo "Please move your project to a directory without spaces (e.g., /home/user/project) and try again."
+    exit 1
+fi
+
 # Detect operating system
 OS=$(uname -s)
 echo "Detected OS: $OS"
@@ -47,9 +58,6 @@ LDFLAGS=""
 for flag in $SDL_LIBS; do
     LDFLAGS="$LDFLAGS -LDFLAGS $flag"
 done
-
-# Get the absolute path of the script directory
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # Set default path to the script directory
 DEFAULT_INCLUDE_DIR="$SCRIPT_DIR"
@@ -104,13 +112,13 @@ fi
 # Step 1: Compile Verilog code with Verilator
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
-VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS")
+VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -Wno-fatal -Wno-EOFNEWLINE -Wno-UNUSEDPARAM -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS" 2>&1)
 VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
 
 # Check if Verilator executed successfully
-if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
+if [ $VERILATOR_EXIT_CODE -ne 0 ] || [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     echo "Error: Verilator compilation failed!"
     echo "Possible causes:"
     echo "1. Not provide correct path of RTLs"
