@@ -4,44 +4,64 @@
 
 ## 📑 目录 / Table of Contents
 
-1. [简介 / Introduction](#1-简介--introduction)
-   - 1.1 [模拟器功能 / Simulator Features](#11-模拟器功能)
-   - 1.2 [系统要求 / System Requirements](#12-系统要求)
-4. [工具安装 / Tool Installation](#4-工具安装--tool-installation)
-   - 4.1 [Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤)
-      - 4.1.0 [安装开发工具 / Install Development Tools](#410-安装开发工具)
-      - 4.1.1 [配置镜像源 / Configure Mirror Source](#411-配置镜像源)
-      - 4.1.2 [安装所需工具 / Install Required Tools](#412-安装所需工具)
-      - 4.1.3 [安装依赖问题排查 / Dependency Troubleshooting](#413-安装依赖问题排查)
-   - 4.2 [Mac 安装步骤 / Mac Installation](#42-mac-安装步骤)
-      - 4.2.0 [安装开发工具 / Install Development Tools](#420-安装开发工具)
-      - 4.2.1 [安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools)
-      - 4.2.2 [安装 Homebrew / Install Homebrew](#422-安装-homebrew)
-      - 4.2.3 [安装 SDL2 / Install SDL2](#423-安装-sdl2)
-      - 4.2.4 [安装 Verilator / Install Verilator](#424-安装-verilator)
-   - 4.3 [验证安装 / Verify Installation](#43-验证安装)
-5. [下载模拟器 / Download Simulator](#5-下载模拟器)
-6. [使用教程 / Usage Tutorial](#6-使用教程)
-   - 6.1 [了解开发板模块 / Understanding the Development Board](#61-了解开发板模块)
-   - 6.2 [准备你的 Verilog 代码 / Preparing Your Verilog Code](#62-准备你的-verilog-代码)
-      - [步骤 1：整理文件 / Step 1: Organize Files](#步骤1整理文件)
-      - [步骤 2：添加时标 / Step 2: Add Timescale](#步骤2添加时标)
-      - [步骤 3：避免使用 IP 核 / Step 3: Avoid IP Cores](#步骤3避免使用-ip-核)
-   - 6.3 [使用 GUI Launcher / Using GUI Launcher](#63-使用-gui-launcher)
-7. [示例项目 / Example Projects](#7-示例项目)
-   - 7.1 [示例 1：彩色条 / Color Bar](#71-示例-1彩色条--color-bar)
-   - 7.2 [示例 2：移动球 / Ball Movement](#72-示例-2移动球--ball-movement)
-8. [故障排除 / Troubleshooting](#8-故障排除)
-   - 8.1 [常见问题 / Common Issues](#81-常见问题)
-      - [Q1: verilator 未找到](#q1-verilator-未找到)
-      - [Q2: SDL.h 未找到](#q2-sdlh-未找到)
-      - [Q3: Permission denied](#q3-permission-denied)
+- [VGA 模拟器安装与使用手册 / VGA Simulator Installation \& Usage Manual](#vga-模拟器安装与使用手册--vga-simulator-installation--usage-manual)
+  - [📑 目录 / Table of Contents](#-目录--table-of-contents)
+  - [1. 简介 / Introduction](#1-简介--introduction)
+    - [1.1 模拟器功能 / Simulator Features](#11-模拟器功能--simulator-features)
+    - [1.2 系统要求 / System Requirements](#12-系统要求--system-requirements)
+  - [4. 工具安装 / Tool Installation](#4-工具安装--tool-installation)
+    - [4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤--ubuntulinux-installation)
+      - [4.1.0 安装开发工具 / Install Development Tools](#410-安装开发工具--install-development-tools)
+      - [4.1.1 配置镜像源（中国内地学生）/ Configure Mirror Source (Mainland China Students)](#411-配置镜像源中国内地学生-configure-mirror-source-mainland-china-students)
+      - [4.1.2 安装所需工具 / Install Required Tools](#412-安装所需工具--install-required-tools)
+      - [4.1.3 安装依赖问题排查 / Dependency Troubleshooting](#413-安装依赖问题排查--dependency-troubleshooting)
+    - [4.2 Mac 安装步骤 / Mac Installation](#42-mac-安装步骤--mac-installation)
+      - [4.2.0 安装开发工具 / Install Development Tools](#420-安装开发工具--install-development-tools)
+      - [4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools--install-xcode-command-line-tools)
+      - [4.2.2 安装 Homebrew（如果尚未安装）/ Install Homebrew (if not installed)](#422-安装-homebrew如果尚未安装-install-homebrew-if-not-installed)
+      - [4.2.3 安装 SDL2 / Install SDL2](#423-安装-sdl2--install-sdl2)
+      - [4.2.4 安装 Verilator / Install Verilator](#424-安装-verilator--install-verilator)
+    - [4.3 验证安装 / Verify Installation](#43-验证安装--verify-installation)
+  - [5. 下载模拟器 / Download Simulator](#5-下载模拟器--download-simulator)
+  - [6. 使用教程 / Usage Tutorial](#6-使用教程--usage-tutorial)
+    - [6.1 了解开发板模块 / Understanding the Development Board](#61-了解开发板模块--understanding-the-development-board)
+    - [6.2 准备你的 Verilog 代码 / Preparing Your Verilog Code](#62-准备你的-verilog-代码--preparing-your-verilog-code)
+      - [步骤 1：整理文件 / Step 1: Organize Files](#步骤-1整理文件--step-1-organize-files)
+      - [步骤 2：添加时标 / Step 2: Add Timescale](#步骤-2添加时标--step-2-add-timescale)
+      - [步骤 3：避免使用 IP 核 / Step 3: Avoid IP Cores](#步骤-3避免使用-ip-核--step-3-avoid-ip-cores)
+    - [6.3 使用 GUI Launcher / Using GUI Launcher](#63-使用-gui-launcher--using-gui-launcher)
+  - [7. 示例项目 / Example Projects](#7-示例项目--example-projects)
+    - [7.1 示例 1：彩色条 / Color Bar](#71-示例-1彩色条--color-bar)
+    - [7.2 示例 2：移动球 / Ball Movement](#72-示例-2移动球--ball-movement)
+  - [8. 故障排除 / Troubleshooting](#8-故障排除--troubleshooting)
+    - [8.1 常见问题 / Common Issues](#81-常见问题--common-issues)
+      - [Q1: 提示 "verilator: command not found"](#q1-提示-verilator-command-not-found)
+      - [Q2: 提示 "SDL.h: No such file"](#q2-提示-sdlh-no-such-file)
+      - [Q3: 提示 "Permission denied" 运行脚本时](#q3-提示-permission-denied-运行脚本时)
       - [Q4: 编译成功但窗口黑屏](#q4-编译成功但窗口黑屏)
-      - [Q5: 按键没有响应](#q5-按键没有响应)
-   - 8.2 [错误信息速查 / Quick Error Reference](#82-错误信息速查)
-9. [结语 / Conclusion](#9-结语)
-A. [准备工作 / Prerequisites](#a-准备工作--prerequisites)
-B. [系统安装 / System Installation](#b-系统安装--system-installation)
+      - [Q5: 按钮按下没有响应](#q5-按钮按下没有响应)
+    - [8.2 错误信息速查 / Quick Error Reference](#82-错误信息速查--quick-error-reference)
+  - [9. 结语 / Conclusion](#9-结语--conclusion)
+  - [10. 附录 / Appendices](#10-附录--appendices)
+    - [Appendix A. 准备工作 / Prerequisites](#a-准备工作--prerequisites)
+      - [A.1 Linux 命令行基础 / Linux Command Line Basics](#a1-linux-命令行基础--linux-command-line-basics)
+        - [A.1.1 什么是终端？/ What is a Terminal?](#a11-什么是终端-what-is-a-terminal)
+        - [A.1.2 如何打开终端？/ How to Open a Terminal?](#a12-如何打开终端-how-to-open-a-terminal)
+        - [A.1.3 基础命令详解 / Basic Commands Explained](#a13-基础命令详解--basic-commands-explained)
+        - [A.1.4 文件权限基础 / File Permission Basics](#a14-文件权限基础--file-permission-basics)
+        - [A.1.5 Linux 路径详解 / Linux Paths Explained](#a15-linux-路径详解--linux-paths-explained)
+      - [A.2 Mac 命令行基础 / Mac Command Line Basics](#a2-mac-命令行基础--mac-command-line-basics)
+        - [A.2.1 如何打开终端？/ How to Open Terminal on Mac?](#a21-如何打开终端-how-to-open-terminal-on-mac)
+        - [A.2.2 Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands](#a22-mac-与-linux-命令的区别--differences-between-mac-and-linux-commands)
+    - [Appendix B. 系统安装 / System Installation](#b-系统安装--system-installation)
+      - [B.1 手动安装方案 / Manual Installation](#b1-手动安装方案--manual-installation)
+        - [B.1.1 下载与安装 VirtualBox / Download and Install VirtualBox](#b11-下载与安装-virtualbox--download-and-install-virtualbox)
+        - [B.1.2 下载 Ubuntu 镜像 / Download Ubuntu ISO](#b12-下载-ubuntu-镜像--download-ubuntu-iso)
+        - [B.1.3 创建虚拟机 / Create Virtual Machine](#b13-创建虚拟机--create-virtual-machine)
+        - [B.1.4 安装 Ubuntu / Install Ubuntu](#b14-安装-ubuntu--install-ubuntu)
+        - [B.1.5 安装增强功能与设置共享文件夹 / Install Guest Additions \& Shared Folder](#b15-安装增强功能与设置共享文件夹--install-guest-additions--shared-folder)
+      - [B.2 Windows 备选方案：WSL / Windows Alternative: WSL](#b2-windows-备选方案wsl--windows-alternative-wsl)
+      - [B.3 Mac 原生环境 / Mac Native Environment](#b3-mac-原生环境--mac-native-environment)
 
 ---
 
@@ -71,7 +91,7 @@ This manual is designed for FPGA course students, providing detailed instruction
 ## 4. 工具安装 / Tool Installation
 
 
-> 📖 **前置知识说明 / Prerequisites Note**: 如果你不熟悉 Linux 命令行或尚未安装操作系统，请参考 [附录 A：准备工作](#a-准备工作--prerequisites) 和 [附录 B：系统安装](#b-系统安装--system-installation)。
+> 📖 **前置知识说明 / Prerequisites Note**: 如果你不熟悉 Linux 命令行或尚未安装操作系统，请参考 [Appendix A：准备工作](#a-准备工作--prerequisites) 和 [Appendix B：系统安装](#b-系统安装--system-installation)。
 > If you are not familiar with the Linux command line or have not yet installed an operating system, please refer to [Appendix A: Prerequisites](#a-准备工作--prerequisites) and [Appendix B: System Installation](#b-系统安装--system-installation).
 
 ### 4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation
@@ -603,7 +623,9 @@ end
 
 ---
 
-## A. 准备工作 / Prerequisites
+## 10. 附录 / Appendices
+
+## Appendix A. 准备工作 / Prerequisites
 
 ### A.1 Linux 命令行基础 / Linux Command Line Basics
 
@@ -822,7 +844,7 @@ Most commands are the same, but there are a few important differences:
 
 ---
 
-## B. 系统安装 / System Installation
+## Appendix B. 系统安装 / System Installation
 
 ### B.1 手动安装方案 / Manual Installation
 
