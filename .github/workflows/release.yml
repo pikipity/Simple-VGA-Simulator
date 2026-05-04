@@ -111,7 +111,9 @@ jobs:
         working-directory: gui
         run: |
           cd ${{ matrix.build_path }}
-          zip -r "$OLDPWD/../${{ matrix.artifact_name }}.${{ matrix.archive_ext }}" .
+          # Zip the .app bundle itself, not its contents
+          APP_NAME=$(ls -d *.app | head -1)
+          ditto -c -k --sequesterRsrc --keepParent "$APP_NAME" "$OLDPWD/../${{ matrix.artifact_name }}.${{ matrix.archive_ext }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
