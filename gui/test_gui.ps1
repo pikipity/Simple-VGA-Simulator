@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 $ErrorActionPreference = "Stop"
 
-# 脚本所在目录（即 gui/ 目录）
+# Script directory (i.e., gui/ directory)
 $sourceDir = $PSScriptRoot
 $proxyDir  = "C:\Windows\Temp\vga_gui_test"
 
@@ -12,24 +12,24 @@ Write-Host "Source: $sourceDir"
 Write-Host "Proxy:  $proxyDir"
 Write-Host ""
 
-# ============ 智能检测：代理目录能否复用 ============
+# ============ Smart Detection: Can proxy directory be reused? ============
 
 $needRebuild = $false
 
 if (Test-Path $proxyDir) {
     Write-Host "Proxy directory found. Checking validity..."
     
-    # 检查 1：pubspec.yaml 是否最新
+    # Check 1: Is pubspec.yaml up-to-date?
     $pubspecSource = Get-Item "$sourceDir\pubspec.yaml"
     $pubspecProxy  = Get-Item "$proxyDir\pubspec.yaml" -ErrorAction SilentlyContinue
     $pubspecOk = $pubspecProxy -and ($pubspecProxy.LastWriteTime -ge $pubspecSource.LastWriteTime)
     Write-Host "  pubspec.yaml up-to-date : $pubspecOk"
     
-    # 检查 2：Junction 链接是否有效
+    # Check 2: Are Junction links valid?
     $junctionOk = Test-Path "$proxyDir\lib\services\workspace_service.dart"
     Write-Host "  Junction links valid    : $junctionOk"
     
-    # 检查 3：windows 平台目录是否存在
+    # Check 3: Does Windows platform directory exist?
     $windowsOk = Test-Path "$proxyDir\windows\runner"
     Write-Host "  windows platform ready  : $windowsOk"
     
@@ -57,25 +57,25 @@ if (Test-Path $proxyDir) {
     $needRebuild = $true
 }
 
-# ============ 完整重建逻辑 ============
+# ============ Full Rebuild Logic ============
 
 if ($needRebuild) {
-    # 1. 清理
+    # 1. Clean up
     if (Test-Path $proxyDir) {
         Write-Host "[1/5] Cleaning old proxy directory..."
         Remove-Item -Recurse -Force $proxyDir
     }
     
-    # 2. 创建目录
+    # 2. Create directory
     Write-Host "[2/5] Creating proxy directory..."
     New-Item -ItemType Directory -Path $proxyDir -Force | Out-Null
     
-    # 3. 复制配置文件
+    # 3. Copy config files
     Write-Host "[3/5] Copying config files..."
     Copy-Item "$sourceDir\pubspec.yaml" "$proxyDir\"
     Copy-Item "$sourceDir\analysis_options.yaml" "$proxyDir\"
     
-    # 4. 创建 Junction 链接
+    # 4. Create Junction links
     Write-Host "[4/5] Creating Junction links..."
     cmd /c mklink /J "$proxyDir\lib" "$sourceDir\lib" | Out-Null
     cmd /c mklink /J "$proxyDir\assets" "$sourceDir\assets" | Out-Null
@@ -86,7 +86,7 @@ if ($needRebuild) {
     flutter create --platforms=windows . 2>&1 | ForEach-Object { Write-Host "  $_" }
 }
 
-# ============ 编译 ============
+# ============ Compile ============
 
 Write-Host ""
 Write-Host "Building Windows executable..."

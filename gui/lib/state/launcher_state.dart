@@ -11,11 +11,11 @@ import '../services/verilog_parser.dart';
 import '../services/workspace_service.dart';
 
 class LauncherState extends ChangeNotifier {
-  // Step 0: 依赖
+  // Step 0: Dependencies
   List<Dependency> dependencies = [];
   bool isCheckingDependencies = false;
 
-  // Step 1: 项目
+  // Step 1: Project
   ProjectConfig? project;
   List<VerilogModule> scannedModules = [];
   bool isScanning = false;
@@ -23,22 +23,22 @@ class LauncherState extends ChangeNotifier {
   // Step 2: Top Module
   VerilogModule? selectedModule;
 
-  // Step 3: 信号映射
+  // Step 3: Signal Mapping
   Map<String, String> signalMapping = {};
 
-  // 运行状态
+  // Runtime state
   bool isRunning = false;
   List<String> logLines = [];
   String? errorMessage;
 
-  // 开发板信号固定列表
+  // Fixed board signal list
   final List<String> boardSignals = [
     'clk', 'reset', 'B2', 'B3', 'B4', 'B5',
     'h_sync', 'v_sync', 'rgb',
     'led1', 'led2', 'led3', 'led4', 'led5',
   ];
 
-  /// Step 0: 检查依赖
+  /// Step 0: Check dependencies
   Future<void> checkDependencies() async {
     isCheckingDependencies = true;
     notifyListeners();
@@ -48,7 +48,7 @@ class LauncherState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Step 1: 选择项目目录
+  /// Step 1: Select project directory
   Future<void> selectProject(String rtlDir) async {
     isScanning = true;
     notifyListeners();
@@ -67,11 +67,11 @@ class LauncherState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Step 2: 选择 Top Module
+  /// Step 2: Select Top Module
   void selectTopModule(String moduleName) {
     selectedModule = scannedModules.firstWhere(
       (m) => m.name == moduleName,
-      orElse: () => throw Exception('模块 $moduleName 不存在'),
+      orElse: () => throw Exception('Module $moduleName does not exist'),
     );
     project = project!.copyWith(topModuleName: moduleName);
 
@@ -79,7 +79,7 @@ class LauncherState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 自动推断信号映射
+  /// Auto-infer signal mapping
   void autoInferMapping() {
     if (selectedModule == null) return;
 
@@ -123,14 +123,14 @@ class LauncherState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 运行仿真
+  /// Run simulation
   Future<void> runSimulation() async {
     if (project == null || selectedModule == null) return;
 
     final rtlDir = project!.rtlDirectory;
     final simDir = path.join(rtlDir, 'sim');
 
-    // 1. 准备工作目录：创建 sim/，复制模板，生成 DevelopmentBoard.v
+    // 1. Prepare workspace: create sim/, copy templates, generate DevelopmentBoard.v
     try {
       await WorkspaceService.prepareWorkspace(
         rtlDir: rtlDir,
@@ -138,19 +138,19 @@ class LauncherState extends ChangeNotifier {
         mapping: signalMapping,
       );
     } catch (e) {
-      logLines = ['[ERROR] 准备工作目录失败: $e'];
+      logLines = ['[ERROR] Failed to prepare workspace: $e'];
       notifyListeners();
       return;
     }
 
     logLines = [
-      '[INFO] 工作目录已准备: $simDir',
-      '[INFO] 已生成 DevelopmentBoard.v',
+      '[INFO] Workspace prepared: $simDir',
+      '[INFO] DevelopmentBoard.v generated',
     ];
     isRunning = true;
     notifyListeners();
 
-    // 2. 启动编译
+    // 2. Start compilation
     File? logSink;
     IOSink? sink;
     try {
@@ -187,7 +187,7 @@ class LauncherState extends ChangeNotifier {
   Future<void> stopSimulation() async {
     await CompilerService.stopSimulation();
     isRunning = false;
-    logLines.add('[INFO] 仿真已停止');
+    logLines.add('[INFO] Simulation stopped');
     notifyListeners();
   }
 

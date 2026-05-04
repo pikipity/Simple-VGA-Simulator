@@ -24,7 +24,7 @@ class ActionArea extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.play_arrow),
-            label: Text(state.isRunning ? '运行中...' : '🚀 一键运行仿真'),
+            label: Text(state.isRunning ? 'Running...' : '🚀 Run Simulation'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               textStyle: const TextStyle(fontSize: 16),
@@ -36,7 +36,7 @@ class ActionArea extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () => state.stopSimulation(),
             icon: const Icon(Icons.stop),
-            label: const Text('停止'),
+            label: const Text('Stop'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# WSL 显示环境自动配置（必须在任何命令之前）
+# WSL display environment auto-configuration (must be before any command)
 if grep -qi microsoft /proc/version 2>/dev/null; then
     if [ -z "$DISPLAY" ]; then
         export DISPLAY=:0
@@ -14,9 +14,9 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     fi
 fi
 
-# 用法: ./run_simulation.sh [include_directory_path]
+# Usage: ./run_simulation.sh [include_directory_path]
 
-# 检测操作系统
+# Detect operating system
 OS=$(uname -s)
 echo "Detected OS: $OS"
 
@@ -48,22 +48,22 @@ for flag in $SDL_LIBS; do
     LDFLAGS="$LDFLAGS -LDFLAGS $flag"
 done
 
-# 获取脚本所在的绝对路径
+# Get the absolute path of the script directory
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-# 设置默认路径为脚本所在目录
+# Set default path to the script directory
 DEFAULT_INCLUDE_DIR="$SCRIPT_DIR"
 
-# 检查用户是否提供了路径参数
+# Check if user provided a path argument
 if [ $# -eq 0 ]; then
-    # 用户没有提供参数，使用脚本所在路径
+    # User did not provide an argument, use the script directory
     INCLUDE_DIR="$DEFAULT_INCLUDE_DIR"
     echo "NOTE: No include directory path is provided, the directory where the script is located is used: $INCLUDE_DIR"
 else
-    # 用户提供了参数，使用用户指定的路径
+    # User provided an argument, use the specified path
     INCLUDE_DIR="$1"
     
-    # 检查用户提供的路径是否存在
+    # Check if the provided path exists
     if [ ! -d "$INCLUDE_DIR" ]; then
         echo "Error: '$INCLUDE_DIR' does not exist"
         echo "Tip: You can use the directory where the script is located without providing any parameters, or provide a valid directory path"
@@ -74,7 +74,7 @@ fi
 echo "Start simulation..."
 echo "Include directories used: $INCLUDE_DIR"
 
-# 检查必要的文件是否存在[6](@ref)
+# Check if required files exist
 if [ ! -f "simulator.cpp" ]; then
     echo "Error: simulator.cpp does not exist in the current directory"
     exit 1
@@ -101,7 +101,7 @@ else
 fi
 
 
-# 第一步：使用Verilator编译Verilog代码
+# Step 1: Compile Verilog code with Verilator
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
 VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS")
@@ -109,7 +109,7 @@ VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
 
-# 检查Verilator是否成功执行
+# Check if Verilator executed successfully
 if [ ! -f "obj_dir/VDevelopmentBoard.mk" ]; then
     echo "Error: Verilator compilation failed!"
     echo "Possible causes:"
@@ -126,14 +126,14 @@ fi
 
 echo "✓ Verilator compilation completed successfully!"
 
-# 第二步：构建仿真可执行文件
+# Step 2: Build simulation executable
 echo "---------------------------------"
 echo "Step 2: Build the simulation executable..."
 # Export SDL flags for make
 export CXXFLAGS="$SDL_CFLAGS"
 make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
 
-# 检查make是否成功构建
+# Check if make built successfully
 if [ $? -ne 0 ]; then
     echo "Error: Make build failed!"
     echo "Please check the compilation error message above"
@@ -142,13 +142,13 @@ fi
 
 echo "✓ Simulation executable file built successfully!"
 
-# 第三步：运行仿真
+# Step 3: Run simulation
 echo "---------------------------------"
 echo "Step 3: Start the simulation..."
 echo "----------------------------------------"
 obj_dir/VDevelopmentBoard
 
-# 检查仿真是否成功运行
+# Check if simulation ran successfully
 SIMULATION_EXIT_CODE=$?
 echo "----------------------------------------"
 

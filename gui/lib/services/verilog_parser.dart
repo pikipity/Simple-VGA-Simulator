@@ -18,7 +18,7 @@ class VerilogParser {
         final fileModules = _parseContent(content, file.path);
         modules.addAll(fileModules);
       } catch (_) {
-        // 忽略无法解析的文件
+        // Ignore files that cannot be parsed
       }
     }
     return modules;
@@ -27,15 +27,15 @@ class VerilogParser {
   static List<VerilogModule> _parseContent(String content, String filePath) {
     final modules = <VerilogModule>[];
 
-    // 移除行注释
+    // Remove line comments
     content = content.replaceAll(RegExp(r'//.*'), '');
-    // 移除块注释
+    // Remove block comments
     content = content.replaceAllMapped(
       RegExp(r'/\*.*?\*/', dotAll: true),
       (m) => '',
     );
 
-    // 匹配 module 声明 (ANSI 风格)
+    // Match module declaration (ANSI style)
     final moduleRegex = RegExp(
       r'module\s+(\w+)\s*\(([^)]*)\)',
       dotAll: true,
@@ -74,7 +74,7 @@ class VerilogParser {
     decl = decl.trim();
     if (decl.isEmpty) return null;
 
-    // 提取方向
+    // Extract direction
     final dirMatch = RegExp(
       r'^(input|output|inout)\b',
       caseSensitive: false,
@@ -84,7 +84,7 @@ class VerilogParser {
     final direction = dirMatch.group(1)!.toLowerCase();
     decl = decl.substring(dirMatch.end).trim();
 
-    // 提取类型 (wire/reg)
+    // Extract type (wire/reg)
     String? type;
     final typeMatch = RegExp(
       r'^(wire|reg)\b',
@@ -95,7 +95,7 @@ class VerilogParser {
       decl = decl.substring(typeMatch.end).trim();
     }
 
-    // 提取位宽
+    // Extract bitwidth
     String? bitwidth;
     final bitMatch = RegExp(r'^(\[[^\]]+\])').firstMatch(decl);
     if (bitMatch != null) {
@@ -103,7 +103,7 @@ class VerilogParser {
       decl = decl.substring(bitMatch.end).trim();
     }
 
-    // 提取信号名
+    // Extract signal name
     decl = decl.replaceAll(',', '').trim();
     if (!RegExp(r'^[a-zA-Z_][a-zA-Z0-9_]*$').hasMatch(decl)) {
       return null;

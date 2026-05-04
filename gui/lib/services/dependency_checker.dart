@@ -11,7 +11,7 @@ class DependencyChecker {
       minVersion: '4.0',
       installGuideUbuntu: 'sudo apt install verilator',
       installGuideMacOS: 'brew install verilator',
-      installGuideWindows: '安装 MSYS2 后执行: pacman -S verilator',
+      installGuideWindows: 'After installing MSYS2, run: pacman -S verilator',
     ),
     Dependency(
       name: 'SDL2',
@@ -19,7 +19,7 @@ class DependencyChecker {
       versionArgs: const ['--version'],
       installGuideUbuntu: 'sudo apt install libsdl2-dev',
       installGuideMacOS: 'brew install sdl2',
-      installGuideWindows: '安装 MSYS2 后执行: pacman -S mingw-w64-x86_64-SDL2',
+      installGuideWindows: 'After installing MSYS2, run: pacman -S mingw-w64-x86_64-SDL2',
     ),
     Dependency(
       name: 'make',
@@ -27,7 +27,7 @@ class DependencyChecker {
       versionArgs: const ['--version'],
       installGuideUbuntu: 'sudo apt install build-essential',
       installGuideMacOS: 'xcode-select --install',
-      installGuideWindows: '安装 MSYS2 后执行: pacman -S make',
+      installGuideWindows: 'After installing MSYS2, run: pacman -S make',
     ),
     Dependency(
       name: 'g++',
@@ -35,7 +35,7 @@ class DependencyChecker {
       versionArgs: const ['--version'],
       installGuideUbuntu: 'sudo apt install build-essential',
       installGuideMacOS: 'xcode-select --install',
-      installGuideWindows: '安装 MSYS2 后执行: pacman -S mingw-w64-x86_64-gcc',
+      installGuideWindows: 'After installing MSYS2, run: pacman -S mingw-w64-x86_64-gcc',
     ),
   ];
 
@@ -55,7 +55,7 @@ class DependencyChecker {
       installGuideWindows: base.installGuideWindows,
     );
 
-    // 1. 检查本机
+    // 1. Check native installation
     final native = await _tryRun(dep.command, dep.versionArgs);
     if (native != null) {
       dep.isInstalled = true;
@@ -63,7 +63,7 @@ class DependencyChecker {
       return dep;
     }
 
-    // 2. Windows 检查 WSL fallback
+    // 2. Windows: check WSL fallback
     if (PlatformHelper.isWindows) {
       final wsl = await _tryRunInWsl(dep.command, dep.versionArgs);
       if (wsl != null) {
@@ -88,15 +88,15 @@ class DependencyChecker {
 
   static Future<String?> _tryRunInWsl(String cmd, List<String> args) async {
     try {
-      // 先确认 WSL 可用
+      // Verify WSL is available
       final wslCheck = await Process.run('wsl', ['echo', 'ok']);
       if (wslCheck.exitCode != 0) return null;
 
-      // 检查 WSL 中命令是否存在
+      // Check if command exists in WSL
       final whichResult = await Process.run('wsl', ['which', cmd]);
       if (whichResult.exitCode != 0) return null;
 
-      // 获取版本
+      // Get version
       final result = await Process.run('wsl', [cmd, ...args]);
       if (result.exitCode == 0) {
         return _extractVersion(result.stdout.toString());

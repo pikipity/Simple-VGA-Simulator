@@ -11,7 +11,7 @@ class VGALauncherApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) {
         final state = LauncherState();
-        // 启动后自动检查环境依赖
+        // Auto-check environment dependencies on startup
         Future.microtask(() => state.checkDependencies());
         return state;
       },

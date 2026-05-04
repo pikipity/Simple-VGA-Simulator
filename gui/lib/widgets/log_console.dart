@@ -22,7 +22,7 @@ class _LogConsoleState extends State<LogConsole> {
   Widget build(BuildContext context) {
     final state = context.watch<LauncherState>();
 
-    // 自动滚动到底部
+    // Auto-scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(
@@ -42,7 +42,7 @@ class _LogConsoleState extends State<LogConsole> {
                 const Icon(Icons.terminal, size: 20),
                 const SizedBox(width: 8),
                 const Text(
-                  '运行日志',
+                  'Run Log',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
@@ -51,7 +51,7 @@ class _LogConsoleState extends State<LogConsole> {
                       ? () => state.clearLogs()
                       : null,
                   icon: const Icon(Icons.clear_all, size: 16),
-                  label: const Text('清空'),
+                  label: const Text('Clear'),
                 ),
               ],
             ),
@@ -65,7 +65,7 @@ class _LogConsoleState extends State<LogConsole> {
               child: state.logLines.isEmpty
                   ? const Center(
                       child: Text(
-                        '日志将显示在这里',
+                        'Logs will appear here',
                         style: TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     )

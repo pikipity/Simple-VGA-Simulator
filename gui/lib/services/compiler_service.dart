@@ -13,7 +13,7 @@ class CompilerService {
     required String simDir,
   }) async {
     if (_currentProcess != null) {
-      throw Exception('已有仿真进程在运行');
+      throw Exception('A simulation process is already running');
     }
 
     final useWsl = await _shouldUseWsl();
@@ -23,7 +23,7 @@ class CompilerService {
       final wslRtl = PlatformHelper.toWslPath(rtlDir);
       final wslSim = PlatformHelper.toWslPath(simDir);
       if (wslRtl == null || wslSim == null) {
-        throw Exception('无法将 Windows 路径转换为 WSL 路径');
+        throw Exception('Unable to convert Windows path to WSL path');
       }
       process = await Process.start('wsl', [
         'bash',
@@ -43,7 +43,7 @@ class CompilerService {
     final stdoutStream = process.stdout.transform(utf8.decoder);
     final stderrStream = process.stderr.transform(utf8.decoder);
 
-    // 合并 stdout 和 stderr
+    // Merge stdout and stderr
     final controller = StreamController<String>();
     stdoutStream.listen(
       (data) { if (!controller.isClosed) controller.add(data); },
@@ -70,13 +70,13 @@ class CompilerService {
   static Future<bool> _shouldUseWsl() async {
     if (!PlatformHelper.isWindows) return false;
 
-    // 优先检查本机
+    // Check native installation first
     try {
       final result = await Process.run('verilator', ['--version']);
       if (result.exitCode == 0) return false;
     } catch (_) {}
 
-    // 本机没有，检查 WSL
+    // Native not found, check WSL fallback
     try {
       final result = await Process.run('wsl', ['verilator', '--version']);
       return result.exitCode == 0;

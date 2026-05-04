@@ -20,7 +20,7 @@ class SignalMappingCard extends StatelessWidget {
                 const Icon(Icons.cable, size: 20),
                 const SizedBox(width: 8),
                 const Text(
-                  'Step 3: 信号映射',
+                  'Step 3: Signal Mapping',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
@@ -28,14 +28,14 @@ class SignalMappingCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => state.autoInferMapping(),
                     icon: const Icon(Icons.auto_fix_high, size: 16),
-                    label: const Text('自动推断'),
+                    label: const Text('Auto Infer'),
                   ),
               ],
             ),
             const SizedBox(height: 12),
             if (state.selectedModule == null)
               const Text(
-                '请先选择 Top Module',
+                'Please select a Top Module first',
                 style: TextStyle(color: Colors.grey),
               )
             else
@@ -51,24 +51,24 @@ class SignalMappingCard extends StatelessWidget {
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(vertical: 4),
-                        child: Text('开发板信号',
+                        child: Text('Board Signal',
                             style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                       SizedBox(),
-                      Text('模块信号',
+                      Text('Module Signal',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   ...state.boardSignals.map((boardSignal) {
                     final modulePorts = [
-                      '(未连接)',
+                      '(unconnected)',
                       ...state.selectedModule!.ports.map((p) => p.name)
                     ];
                     final currentValue = state.signalMapping[boardSignal] ?? '';
                     final selectedValue =
                         modulePorts.contains(currentValue) && currentValue.isNotEmpty
                             ? currentValue
-                            : '(未连接)';
+                            : '(unconnected)';
 
                     return TableRow(
                       children: [
@@ -91,7 +91,7 @@ class SignalMappingCard extends StatelessWidget {
                             if (value != null) {
                               state.updateMapping(
                                 boardSignal,
-                                value == '(未连接)' ? '' : value,
+                                value == '(unconnected)' ? '' : value,
                               );
                             }
                           },
