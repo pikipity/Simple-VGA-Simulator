@@ -976,6 +976,12 @@ Shared folders allow convenient file transfer between Windows/Mac and Ubuntu.
 
 7. 重启虚拟机 / Restart VM: `sudo reboot`
 
+8. 验证 Guest Additions 服务是否运行 / Verify Guest Additions service is running:
+   ```bash
+   sudo systemctl status vboxadd-service
+   ```
+   如果看到 `active (running)`，说明安装成功。/ If you see `active (running)`, the installation was successful.
+
 **设置共享文件夹 / Setup Shared Folder:**
 
 1. 在 VirtualBox 主界面，选中虚拟机，点击 "Settings" / In the VirtualBox main window, select the VM and click "Settings"
