@@ -44,11 +44,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
+      - name: Setup Flutter (x86_64)
+        if: '!contains(matrix.os, ''arm'')'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
+      - name: Setup Flutter (ARM64)
+        if: contains(matrix.os, 'arm')
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y git curl
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          echo "$HOME/flutter/bin/cache/dart-sdk/bin" >> $GITHUB_PATH
 
       - name: Install Linux dependencies
         if: contains(matrix.os, 'ubuntu')
