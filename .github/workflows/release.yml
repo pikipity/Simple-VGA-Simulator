@@ -24,6 +24,11 @@ jobs:
             build_path: build/linux/x64/release/bundle
             artifact_name: vga-launcher-linux
             archive_ext: tar.gz
+          - os: ubuntu-24.04-arm
+            target: linux
+            build_path: build/linux/arm64/release/bundle
+            artifact_name: vga-launcher-linux-arm64
+            archive_ext: tar.gz
           - os: windows-latest
             target: windows
             build_path: build/windows/x64/runner/Release
@@ -46,7 +51,7 @@ jobs:
           cache: true
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: contains(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update -y
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
