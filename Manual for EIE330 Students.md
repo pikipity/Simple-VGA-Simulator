@@ -94,7 +94,7 @@ Before using the simulator, it is recommended to install the following tools:
 |------|------|
 | 用途 / Purpose | 编辑 Verilog 代码 / Edit Verilog code |
 | 下载 / Download | https://code.visualstudio.com/download |
-| 安装 / Install | 下载 `.deb` 安装包，双击安装 / Download `.deb`, double-click to install |
+| 安装 / Install | 根据宿主机架构下载对应 `.deb`：<br>• Windows / Mac (Intel) → `x64` 版本<br>• Mac (Apple Silicon/M) → `arm64` 版本<br>然后在 Ubuntu 终端运行 `sudo apt install ./code_*.deb` 安装 / Download the `.deb` matching your host CPU:<br>• Windows / Mac (Intel) → `x64`<br>• Mac (Apple Silicon/M) → `arm64`<br>Then run `sudo apt install ./code_*.deb` in Ubuntu terminal |
 
 **2. GitHub Desktop（可选）/ Optional**
 
