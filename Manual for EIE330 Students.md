@@ -12,9 +12,8 @@
   - [4. 工具安装 / Tool Installation](#4-工具安装--tool-installation)
     - [4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤--ubuntulinux-installation)
       - [4.1.0 安装开发工具 / Install Development Tools](#410-安装开发工具--install-development-tools)
-      - [4.1.1 配置镜像源（中国内地学生）/ Configure Mirror Source (Mainland China Students)](#411-配置镜像源中国内地学生-configure-mirror-source-mainland-china-students)
-      - [4.1.2 安装所需工具 / Install Required Tools](#412-安装所需工具--install-required-tools)
-      - [4.1.3 安装依赖问题排查 / Dependency Troubleshooting](#413-安装依赖问题排查--dependency-troubleshooting)
+      - [4.1.1 安装所需工具 / Install Required Tools](#411-安装所需工具--install-required-tools)
+      - [4.1.2 安装依赖问题排查 / Dependency Troubleshooting](#412-安装依赖问题排查--dependency-troubleshooting)
     - [4.2 Mac 安装步骤 / Mac Installation](#42-mac-安装步骤--mac-installation)
       - [4.2.0 安装开发工具 / Install Development Tools](#420-安装开发工具--install-development-tools)
       - [4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools--install-xcode-command-line-tools)
@@ -118,45 +117,7 @@ Before using the simulator, it is recommended to install the following tools:
 | 说明 / Note | Linux 版本为社区维护 / Community-maintained for Linux |
 | 下载 / Download | https://github.com/shiftkey/desktop/releases |
 
-#### 4.1.1 配置镜像源（中国内地学生）/ Configure Mirror Source (Mainland China Students)
-
-如果你在中国内地，默认的 Ubuntu 软件源可能很慢或无法访问。建议切换到清华大学镜像源。
-
-If you're in mainland China, the default Ubuntu software sources may be slow or inaccessible. We recommend switching to Tsinghua University mirror.
-
-**步骤 / Steps:**
-
-1. 打开清华大学镜像源帮助页面 / Open Tsinghua mirror help page:
-   https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/
-
-2. 根据你安装的 Ubuntu 版本，复制页面上对应的镜像源配置 / Copy the mirror source configuration corresponding to your Ubuntu version from the page:
-   - 例如 Ubuntu 22.04 LTS 选择版本为 **jammy**  
-     For example, Ubuntu 22.04 LTS corresponds to version **jammy**
-   - 如果你安装的是其他版本，请选择对应的版本代号  
-     If you installed another version, select the corresponding version codename
-
-3. 打开终端 / Open terminal: `Ctrl` + `Alt` + `T`
-
-4. 备份原配置 / Backup original configuration:
-   ```bash
-   sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup
-   ```
-
-5. 编辑软件源列表 / Edit software sources:
-   ```bash
-   sudo code /etc/apt/sources.list
-   ```
-
-6. 删除所有内容，粘贴从网站复制的配置 / Delete all content, paste the configuration copied from the website:
-
-7. 保存并关闭 / Save and close
-
-8. 更新软件列表 / Update package list:
-   ```bash
-   sudo apt-get update
-   ```
-
-#### 4.1.2 安装所需工具 / Install Required Tools
+#### 4.1.1 安装所需工具 / Install Required Tools
 
 运行以下命令，按顺序安装所有需要的软件包：
 
@@ -187,7 +148,7 @@ sudo apt-get install git
 - 看到命令提示符返回，说明安装完成  
   Installation is complete when the command prompt returns
 
-#### 4.1.3 安装依赖问题排查 / Dependency Troubleshooting
+#### 4.1.2 安装依赖问题排查 / Dependency Troubleshooting
 
 如果在安装 `libsdl2-dev` 时遇到如下错误：
 
