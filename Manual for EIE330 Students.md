@@ -717,8 +717,10 @@ $ cd ~/Projects/MyVGA/sim
 
 1. 访问官网 / Visit official website: https://www.virtualbox.org/wiki/Downloads
 
-2. 下载 Windows 版本的安装程序 / Download the Windows installer:
-   - `VirtualBox-7.x.x-Win.exe`
+2. 根据你的宿主机系统下载对应版本的安装程序 / Download the installer for your host OS:
+   - Windows → **Windows hosts**
+   - Mac (Intel) → **macOS / Intel hosts**
+   - Mac (Apple Silicon/M) → **macOS / Apple Silicon hosts**
 
 > 🐧 **Linux 用户注意 / Linux Users Note**:  
 > Linux 用户可以直接在原生 Linux 系统上运行模拟器，无需安装虚拟机。直接跳到 [Section 4 工具安装](#4-工具安装--tool-installation) 安装所需工具即可。  
