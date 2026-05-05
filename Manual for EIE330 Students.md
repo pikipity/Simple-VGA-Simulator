@@ -209,10 +209,10 @@ The easiest way is to download the pre-built GUI Launcher, no manual CLI configu
 
 2. **下载对应平台的压缩包 / Download the archive for your platform:**
 
-   | 平台 / Platform | 文件 / File | 说明 / Description |
-   |----------------|------------|-------------------|
-   | Windows | `vga-launcher-windows.zip` | 解压后运行 `.exe` |
-   | Linux | `vga-launcher-linux.tar.gz` | 解压后运行可执行文件 |
+   | 平台 / Platform | 文件 / File |
+   |----------------|------------|
+   | Windows / Mac (Intel) | `vga-launcher-linux.tar.gz` |
+   | Mac (Apple Silicon/M) | `vga-launcher-linux-arm64.tar.gz` |
 
 3. **解压并运行 / Extract and run:**
    - 解压下载的压缩包到任意目录 / Extract the downloaded archive to any directory
