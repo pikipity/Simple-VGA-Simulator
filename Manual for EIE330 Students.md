@@ -14,13 +14,7 @@
       - [4.1.0 安装开发工具 / Install Development Tools](#410-安装开发工具--install-development-tools)
       - [4.1.1 安装所需工具 / Install Required Tools](#411-安装所需工具--install-required-tools)
       - [4.1.2 安装依赖问题排查 / Dependency Troubleshooting](#412-安装依赖问题排查--dependency-troubleshooting)
-    - [4.2 Mac 安装步骤 / Mac Installation](#42-mac-安装步骤--mac-installation)
-      - [4.2.0 安装开发工具 / Install Development Tools](#420-安装开发工具--install-development-tools)
-      - [4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools--install-xcode-command-line-tools)
-      - [4.2.2 安装 Homebrew（如果尚未安装）/ Install Homebrew (if not installed)](#422-安装-homebrew如果尚未安装-install-homebrew-if-not-installed)
-      - [4.2.3 安装 SDL2 / Install SDL2](#423-安装-sdl2--install-sdl2)
-      - [4.2.4 安装 Verilator / Install Verilator](#424-安装-verilator--install-verilator)
-    - [4.3 验证安装 / Verify Installation](#43-验证安装--verify-installation)
+    - [4.2 验证安装 / Verify Installation](#42-验证安装--verify-installation)
   - [5. 下载模拟器 / Download Simulator](#5-下载模拟器--download-simulator)
   - [6. 使用教程 / Usage Tutorial](#6-使用教程--usage-tutorial)
     - [6.1 了解开发板模块 / Understanding the Development Board](#61-了解开发板模块--understanding-the-development-board)
@@ -49,9 +43,6 @@
         - [A.1.3 基础命令详解 / Basic Commands Explained](#a13-基础命令详解--basic-commands-explained)
         - [A.1.4 文件权限基础 / File Permission Basics](#a14-文件权限基础--file-permission-basics)
         - [A.1.5 Linux 路径详解 / Linux Paths Explained](#a15-linux-路径详解--linux-paths-explained)
-      - [A.2 Mac 命令行基础 / Mac Command Line Basics](#a2-mac-命令行基础--mac-command-line-basics)
-        - [A.2.1 如何打开终端？/ How to Open Terminal on Mac?](#a21-如何打开终端-how-to-open-terminal-on-mac)
-        - [A.2.2 Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands](#a22-mac-与-linux-命令的区别--differences-between-mac-and-linux-commands)
     - [Appendix B. 系统安装 / System Installation](#b-系统安装--system-installation)
       - [B.1 手动安装方案 / Manual Installation](#b1-手动安装方案--manual-installation)
         - [B.1.1 下载与安装 VirtualBox / Download and Install VirtualBox](#b11-下载与安装-virtualbox--download-and-install-virtualbox)
@@ -60,7 +51,6 @@
         - [B.1.4 安装 Ubuntu / Install Ubuntu](#b14-安装-ubuntu--install-ubuntu)
         - [B.1.5 安装增强功能与设置共享文件夹 / Install Guest Additions \& Shared Folder](#b15-安装增强功能与设置共享文件夹--install-guest-additions--shared-folder)
       - [B.2 Windows 备选方案：WSL / Windows Alternative: WSL](#b2-windows-备选方案wsl--windows-alternative-wsl)
-      - [B.3 Mac 原生环境 / Mac Native Environment](#b3-mac-原生环境--mac-native-environment)
 
 ---
 
@@ -82,7 +72,6 @@ This manual is designed for FPGA course students, providing detailed instruction
 ### 1.2 系统要求 / System Requirements
 
 - **推荐 / Recommended**: Ubuntu 22.04 LTS (虚拟机或实体机 / Virtual or Physical Machine)
-- **替代方案 / Alternative**: macOS 15.0+ (Sequoia)
 - **Windows 用户 / Windows Users**: 需安装 VirtualBox 或 WSL2 / Need VirtualBox or WSL2
 
 ---
@@ -176,66 +165,7 @@ sudo apt update
 sudo apt install libsdl2-dev
 ```
 
-### 4.2 Mac 安装步骤 / Mac Installation
-
-#### 4.2.0 安装开发工具 / Install Development Tools
-
-在使用模拟器之前，建议安装以下工具：
-
-Before using the simulator, it is recommended to install the following tools:
-
-**1. VS Code（代码编辑器）**
-
-| 项目 | 内容 |
-|------|------|
-| 用途 / Purpose | 编辑 Verilog 代码 / Edit Verilog code |
-| 下载 / Download | https://code.visualstudio.com/download |
-| 安装 / Install | 下载 `.dmg` 文件，拖拽到 Applications / Download `.dmg`, drag to Applications |
-
-**2. GitHub Desktop（可选）/ Optional**
-
-| 项目 | 内容 |
-|------|------|
-| 用途 / Purpose | 图形化管理代码仓库 / Manage repositories with GUI |
-| 下载 / Download | https://desktop.github.com |
-| 安装 / Install | 下载 `.dmg` 文件，拖拽到 Applications / Download `.dmg`, drag to Applications |
-
-#### 4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools
-
-macOS 的编译工具需要 Xcode Command Line Tools，它包含 GCC、Make 等编译工具。
-
-macOS compilation tools require Xcode Command Line Tools, which include GCC, Make, and other build tools.
-
-```bash
-xcode-select --install
-```
-
-会弹出对话框，点击 "Install"，等待安装完成（约 5-10 分钟）。  
-A dialog will pop up, click "Install" and wait for completion (about 5-10 minutes).
-
-> 💡 **注意 / Note**: `xcode-select --install` 已包含 `make`、`gcc` 和 `g++`，无需额外安装。
-
-#### 4.2.2 安装 Homebrew（如果尚未安装）/ Install Homebrew (if not installed)
-
-访问 https://brew.sh 并按照官方安装指南操作。
-
-Visit https://brew.sh and follow the installation instructions.
-
-Visit https://brew.sh and follow the official installation instructions.
-
-#### 4.2.3 安装 SDL2 / Install SDL2
-
-```bash
-brew install sdl2
-```
-
-#### 4.2.4 安装 Verilator / Install Verilator
-
-```bash
-brew install verilator
-```
-
-### 4.3 验证安装 / Verify Installation
+### 4.2 验证安装 / Verify Installation
 
 安装完成后，验证所有工具是否正确安装：
 
@@ -283,7 +213,6 @@ The easiest way is to download the pre-built GUI Launcher, no manual CLI configu
    | 平台 / Platform | 文件 / File | 说明 / Description |
    |----------------|------------|-------------------|
    | Windows | `vga-launcher-windows.zip` | 解压后运行 `.exe` |
-   | macOS | `vga-launcher-macos.zip` | 解压后运行 `.app` |
    | Linux | `vga-launcher-linux.tar.gz` | 解压后运行可执行文件 |
 
 3. **解压并运行 / Extract and run:**
@@ -497,9 +426,6 @@ The simulator includes two example projects. We recommend running these first to
 ```bash
 # Ubuntu
 sudo apt-get install verilator
-
-# Mac
-brew install verilator
 ```
 
 #### Q2: 提示 "SDL.h: No such file"
@@ -509,9 +435,6 @@ brew install verilator
 ```bash
 # Ubuntu
 sudo apt-get install libsdl2-dev
-
-# Mac
-brew install sdl2
 ```
 
 #### Q3: 提示 "Permission denied" 运行脚本时
@@ -781,30 +704,6 @@ $ cd ~/Projects/MyVGA/sim
    $ cd Pro<Tab>          # 补全为 Projects / Completes to Projects
    ```
 
-### A.2 Mac 命令行基础 / Mac Command Line Basics
-
-#### A.2.1 如何打开终端？/ How to Open Terminal on Mac?
-
-**三种方法 / Three methods:**
-
-1. **Spotlight 搜索 / Spotlight Search**: 按 `Cmd` + `Space`，输入 "terminal"，回车
-2. **Finder**: 应用程序(Applications) → 实用工具(Utilities) → 终端(Terminal)
-3. **Launchpad**: 找到"其他"文件夹 → 终端
-
-#### A.2.2 Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands
-
-大部分命令相同，但有几点重要区别：
-
-Most commands are the same, but there are a few important differences:
-
-| 功能 / Function | Linux (Ubuntu) | Mac |
-|----------------|----------------|-----|
-| 包管理器 / Package Manager | `apt` | `brew` (Homebrew) |
-| 安装软件 / Install software | `sudo apt install xxx` | `brew install xxx` |
-| 更新软件列表 / Update package list | `sudo apt update` | `brew update` |
-
----
-
 ## Appendix B. 系统安装 / System Installation
 
 ### B.1 手动安装方案 / Manual Installation
@@ -825,10 +724,6 @@ Most commands are the same, but there are a few important differences:
 > 🐧 **Linux 用户注意 / Linux Users Note**:  
 > Linux 用户可以直接在原生 Linux 系统上运行模拟器，无需安装虚拟机。直接跳到 [Section 4 工具安装](#4-工具安装--tool-installation) 安装所需工具即可。  
 > Linux users can run the simulator directly on native Linux without installing a virtual machine. Skip to [Section 4 Tool Installation](#4-工具安装--tool-installation) to install required tools.
-
-> 🍎 **Mac 用户注意 / Mac Users Note**:  
-> Mac 用户请直接使用 [Section 3.3 Mac 原生环境](#33-mac-原生环境--mac-native-environment) 配置，无需安装虚拟机。  
-> Mac users should use [Section 3.3 Mac Native Environment](#33-mac-原生环境--mac-native-environment) directly, no need to install a virtual machine.
 
 3. 运行安装程序，按提示完成安装 / Run the installer and follow the prompts
 
@@ -911,9 +806,9 @@ We recommend **Ubuntu 22.04 LTS** (Long Term Support):
 
 #### B.1.5 安装增强功能与设置共享文件夹 / Install Guest Additions & Shared Folder
 
-共享文件夹让你可以在 Windows/Mac 和 Ubuntu 之间方便地传输文件。
+共享文件夹让你可以在 Windows 和 Ubuntu 之间方便地传输文件。
 
-Shared folders allow convenient file transfer between Windows/Mac and Ubuntu.
+Shared folders allow convenient file transfer between Windows and Ubuntu.
 
 **安装 VirtualBox Guest Additions / Install VirtualBox Guest Additions:**
 
@@ -951,7 +846,7 @@ Shared folders allow convenient file transfer between Windows/Mac and Ubuntu.
 
 3. 配置共享文件夹 / Configure:
    ```
-   Folder Path: 选择 Windows/Mac 上的一个文件夹 / Select a folder on Windows/Mac
+   Folder Path: 选择 Windows 上的一个文件夹 / Select a folder on Windows
    Folder Name: shared
    勾选 / Check: Auto-mount
    勾选 / Check: Make Permanent
@@ -1008,19 +903,4 @@ WSL is a Linux subsystem built into Windows 10/11, allowing Linux to run without
      echo 'export DISPLAY=:0.0' >> ~/.bashrc
      source ~/.bashrc
      ```
-
-### B.3 Mac 原生环境 / Mac Native Environment
-
-如果你使用 Mac，且不想使用虚拟机，可以直接在 macOS 上配置环境。
-
-If you use Mac and don't want to use a virtual machine, you can configure the environment directly on macOS.
-
-**前置要求 / Prerequisites:**
-- macOS 15.0 (Sequoia) 或更高版本 / or later
-
-> 💡 **下一步 / Next Step**:  
-> Mac 用户环境配置请直接跳到 [Section 4.2 Mac 安装步骤](#42-mac-安装步骤--mac-installation) 安装所需工具。  
-> Mac users, please skip directly to [Section 4.2 Mac Installation](#42-mac-安装步骤--mac-installation) to install required tools.
-
----
 
