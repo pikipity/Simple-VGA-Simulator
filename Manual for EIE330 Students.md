@@ -9,18 +9,10 @@
   - [1. 简介 / Introduction](#1-简介--introduction)
     - [1.1 模拟器功能 / Simulator Features](#11-模拟器功能--simulator-features)
     - [1.2 系统要求 / System Requirements](#12-系统要求--system-requirements)
-  - [4. 工具安装 / Tool Installation](#4-工具安装--tool-installation)
-    - [4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤--ubuntulinux-installation)
-      - [4.1.0 安装开发工具 / Install Development Tools](#410-安装开发工具--install-development-tools)
-      - [4.1.1 配置镜像源（中国内地学生）/ Configure Mirror Source (Mainland China Students)](#411-配置镜像源中国内地学生-configure-mirror-source-mainland-china-students)
-      - [4.1.2 安装所需工具 / Install Required Tools](#412-安装所需工具--install-required-tools)
-      - [4.1.3 安装依赖问题排查 / Dependency Troubleshooting](#413-安装依赖问题排查--dependency-troubleshooting)
-    - [4.2 Mac 安装步骤 / Mac Installation](#42-mac-安装步骤--mac-installation)
-      - [4.2.0 安装开发工具 / Install Development Tools](#420-安装开发工具--install-development-tools)
-      - [4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools](#421-安装-xcode-command-line-tools--install-xcode-command-line-tools)
-      - [4.2.2 安装 Homebrew（如果尚未安装）/ Install Homebrew (if not installed)](#422-安装-homebrew如果尚未安装-install-homebrew-if-not-installed)
-      - [4.2.3 安装 SDL2 / Install SDL2](#423-安装-sdl2--install-sdl2)
-      - [4.2.4 安装 Verilator / Install Verilator](#424-安装-verilator--install-verilator)
+  - [4. Ubuntu工具安装 / Ubuntu Tool Installation](#4-ubuntu工具安装--ubuntu-tool-installation)
+    - [4.0 安装开发工具 / Install Development Tools](#40-安装开发工具--install-development-tools)
+    - [4.1 安装所需工具 / Install Required Tools](#41-安装所需工具--install-required-tools)
+    - [4.2 安装依赖问题排查 / Dependency Troubleshooting](#42-安装依赖问题排查--dependency-troubleshooting)
     - [4.3 验证安装 / Verify Installation](#43-验证安装--verify-installation)
   - [5. 下载模拟器 / Download Simulator](#5-下载模拟器--download-simulator)
   - [6. 使用教程 / Usage Tutorial](#6-使用教程--usage-tutorial)
@@ -50,9 +42,6 @@
         - [A.1.3 基础命令详解 / Basic Commands Explained](#a13-基础命令详解--basic-commands-explained)
         - [A.1.4 文件权限基础 / File Permission Basics](#a14-文件权限基础--file-permission-basics)
         - [A.1.5 Linux 路径详解 / Linux Paths Explained](#a15-linux-路径详解--linux-paths-explained)
-      - [A.2 Mac 命令行基础 / Mac Command Line Basics](#a2-mac-命令行基础--mac-command-line-basics)
-        - [A.2.1 如何打开终端？/ How to Open Terminal on Mac?](#a21-如何打开终端-how-to-open-terminal-on-mac)
-        - [A.2.2 Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands](#a22-mac-与-linux-命令的区别--differences-between-mac-and-linux-commands)
     - [Appendix B. 系统安装 / System Installation](#b-系统安装--system-installation)
       - [B.1 手动安装方案 / Manual Installation](#b1-手动安装方案--manual-installation)
         - [B.1.1 下载与安装 VirtualBox / Download and Install VirtualBox](#b11-下载与安装-virtualbox--download-and-install-virtualbox)
@@ -61,7 +50,6 @@
         - [B.1.4 安装 Ubuntu / Install Ubuntu](#b14-安装-ubuntu--install-ubuntu)
         - [B.1.5 安装增强功能与设置共享文件夹 / Install Guest Additions \& Shared Folder](#b15-安装增强功能与设置共享文件夹--install-guest-additions--shared-folder)
       - [B.2 Windows 备选方案：WSL / Windows Alternative: WSL](#b2-windows-备选方案wsl--windows-alternative-wsl)
-      - [B.3 Mac 原生环境 / Mac Native Environment](#b3-mac-原生环境--mac-native-environment)
 
 ---
 
@@ -83,20 +71,18 @@ This manual is designed for FPGA course students, providing detailed instruction
 ### 1.2 系统要求 / System Requirements
 
 - **推荐 / Recommended**: Ubuntu 22.04 LTS (虚拟机或实体机 / Virtual or Physical Machine)
-- **替代方案 / Alternative**: macOS 15.0+ (Sequoia)
 - **Windows 用户 / Windows Users**: 需安装 VirtualBox 或 WSL2 / Need VirtualBox or WSL2
 
 ---
 
-## 4. 工具安装 / Tool Installation
+## 4. Ubuntu工具安装 / Ubuntu Tool Installation
 
 
 > 📖 **前置知识说明 / Prerequisites Note**: 如果你不熟悉 Linux 命令行或尚未安装操作系统，请参考 [Appendix A：准备工作](#a-准备工作--prerequisites) 和 [Appendix B：系统安装](#b-系统安装--system-installation)。
 > If you are not familiar with the Linux command line or have not yet installed an operating system, please refer to [Appendix A: Prerequisites](#a-准备工作--prerequisites) and [Appendix B: System Installation](#b-系统安装--system-installation).
 
-### 4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation
 
-#### 4.1.0 安装开发工具 / Install Development Tools
+#### 4.0 安装开发工具 / Install Development Tools
 
 在使用模拟器之前，建议安装以下工具：
 
@@ -108,7 +94,7 @@ Before using the simulator, it is recommended to install the following tools:
 |------|------|
 | 用途 / Purpose | 编辑 Verilog 代码 / Edit Verilog code |
 | 下载 / Download | https://code.visualstudio.com/download |
-| 安装 / Install | 下载 `.deb` 安装包，双击安装 / Download `.deb`, double-click to install |
+| 安装 / Install | 根据宿主机架构下载对应 `.deb`：<br>• Windows / Mac (Intel) → `x64` 版本<br>• Mac (Apple Silicon/M) → `arm64` 版本<br>然后在 Ubuntu 终端运行 `sudo apt install ./code_*.deb` 安装 / Download the `.deb` matching your host CPU:<br>• Windows / Mac (Intel) → `x64`<br>• Mac (Apple Silicon/M) → `arm64`<br>Then run `sudo apt install ./code_*.deb` in Ubuntu terminal |
 
 **2. GitHub Desktop（可选）/ Optional**
 
@@ -116,47 +102,10 @@ Before using the simulator, it is recommended to install the following tools:
 |------|------|
 | 用途 / Purpose | 图形化管理代码仓库 / Manage repositories with GUI |
 | 说明 / Note | Linux 版本为社区维护 / Community-maintained for Linux |
-| 下载 / Download | https://github.com/shiftkey/desktop/releases |
+| 下载 / Download | https://github.com/shiftkey/desktop/releases/tag/release-3.4.13-linux1 |
+| 安装 / Install | 根据宿主机架构下载对应 `.deb`：<br>• Windows / Mac (Intel) → `GitHubDesktop-linux-amd64-3.4.13-linux1.deb`<br>• Mac (Apple Silicon/M) → `GitHubDesktop-linux-arm64-3.4.13-linux1.deb`<br>然后在 Ubuntu 终端运行 `sudo apt install ./GitHubDesktop-*.deb` 安装 / Download the `.deb` matching your host CPU:<br>• Windows / Mac (Intel) → `GitHubDesktop-linux-amd64-3.4.13-linux1.deb`<br>• Mac (Apple Silicon/M) → `GitHubDesktop-linux-arm64-3.4.13-linux1.deb`<br>Then run `sudo apt install ./GitHubDesktop-*.deb` in Ubuntu terminal |
 
-#### 4.1.1 配置镜像源（中国内地学生）/ Configure Mirror Source (Mainland China Students)
-
-如果你在中国内地，默认的 Ubuntu 软件源可能很慢或无法访问。建议切换到清华大学镜像源。
-
-If you're in mainland China, the default Ubuntu software sources may be slow or inaccessible. We recommend switching to Tsinghua University mirror.
-
-**步骤 / Steps:**
-
-1. 打开清华大学镜像源帮助页面 / Open Tsinghua mirror help page:
-   https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/
-
-2. 根据你安装的 Ubuntu 版本，复制页面上对应的镜像源配置 / Copy the mirror source configuration corresponding to your Ubuntu version from the page:
-   - 例如 Ubuntu 22.04 LTS 选择版本为 **jammy**  
-     For example, Ubuntu 22.04 LTS corresponds to version **jammy**
-   - 如果你安装的是其他版本，请选择对应的版本代号  
-     If you installed another version, select the corresponding version codename
-
-3. 打开终端 / Open terminal: `Ctrl` + `Alt` + `T`
-
-4. 备份原配置 / Backup original configuration:
-   ```bash
-   sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup
-   ```
-
-5. 编辑软件源列表 / Edit software sources:
-   ```bash
-   sudo code /etc/apt/sources.list
-   ```
-
-6. 删除所有内容，粘贴从网站复制的配置 / Delete all content, paste the configuration copied from the website:
-
-7. 保存并关闭 / Save and close
-
-8. 更新软件列表 / Update package list:
-   ```bash
-   sudo apt-get update
-   ```
-
-#### 4.1.2 安装所需工具 / Install Required Tools
+#### 4.1 安装所需工具 / Install Required Tools
 
 运行以下命令，按顺序安装所有需要的软件包：
 
@@ -187,7 +136,7 @@ sudo apt-get install git
 - 看到命令提示符返回，说明安装完成  
   Installation is complete when the command prompt returns
 
-#### 4.1.3 安装依赖问题排查 / Dependency Troubleshooting
+#### 4.2 安装依赖问题排查 / Dependency Troubleshooting
 
 如果在安装 `libsdl2-dev` 时遇到如下错误：
 
@@ -213,65 +162,6 @@ EOF
 # 更新并重新安装 / Update and reinstall
 sudo apt update
 sudo apt install libsdl2-dev
-```
-
-### 4.2 Mac 安装步骤 / Mac Installation
-
-#### 4.2.0 安装开发工具 / Install Development Tools
-
-在使用模拟器之前，建议安装以下工具：
-
-Before using the simulator, it is recommended to install the following tools:
-
-**1. VS Code（代码编辑器）**
-
-| 项目 | 内容 |
-|------|------|
-| 用途 / Purpose | 编辑 Verilog 代码 / Edit Verilog code |
-| 下载 / Download | https://code.visualstudio.com/download |
-| 安装 / Install | 下载 `.dmg` 文件，拖拽到 Applications / Download `.dmg`, drag to Applications |
-
-**2. GitHub Desktop（可选）/ Optional**
-
-| 项目 | 内容 |
-|------|------|
-| 用途 / Purpose | 图形化管理代码仓库 / Manage repositories with GUI |
-| 下载 / Download | https://desktop.github.com |
-| 安装 / Install | 下载 `.dmg` 文件，拖拽到 Applications / Download `.dmg`, drag to Applications |
-
-#### 4.2.1 安装 Xcode Command Line Tools / Install Xcode Command Line Tools
-
-macOS 的编译工具需要 Xcode Command Line Tools，它包含 GCC、Make 等编译工具。
-
-macOS compilation tools require Xcode Command Line Tools, which include GCC, Make, and other build tools.
-
-```bash
-xcode-select --install
-```
-
-会弹出对话框，点击 "Install"，等待安装完成（约 5-10 分钟）。  
-A dialog will pop up, click "Install" and wait for completion (about 5-10 minutes).
-
-> 💡 **注意 / Note**: `xcode-select --install` 已包含 `make`、`gcc` 和 `g++`，无需额外安装。
-
-#### 4.2.2 安装 Homebrew（如果尚未安装）/ Install Homebrew (if not installed)
-
-访问 https://brew.sh 并按照官方安装指南操作。
-
-Visit https://brew.sh and follow the installation instructions.
-
-Visit https://brew.sh and follow the official installation instructions.
-
-#### 4.2.3 安装 SDL2 / Install SDL2
-
-```bash
-brew install sdl2
-```
-
-#### 4.2.4 安装 Verilator / Install Verilator
-
-```bash
-brew install verilator
 ```
 
 ### 4.3 验证安装 / Verify Installation
@@ -319,11 +209,10 @@ The easiest way is to download the pre-built GUI Launcher, no manual CLI configu
 
 2. **下载对应平台的压缩包 / Download the archive for your platform:**
 
-   | 平台 / Platform | 文件 / File | 说明 / Description |
-   |----------------|------------|-------------------|
-   | Windows | `vga-launcher-windows.zip` | 解压后运行 `.exe` |
-   | macOS | `vga-launcher-macos.zip` | 解压后运行 `.app` |
-   | Linux | `vga-launcher-linux.tar.gz` | 解压后运行可执行文件 |
+   | 平台 / Platform | 文件 / File |
+   |----------------|------------|
+   | Windows / Mac (Intel) | `vga-launcher-linux.tar.gz` |
+   | Mac (Apple Silicon/M) | `vga-launcher-linux-arm64.tar.gz` |
 
 3. **解压并运行 / Extract and run:**
    - 解压下载的压缩包到任意目录 / Extract the downloaded archive to any directory
@@ -536,9 +425,6 @@ The simulator includes two example projects. We recommend running these first to
 ```bash
 # Ubuntu
 sudo apt-get install verilator
-
-# Mac
-brew install verilator
 ```
 
 #### Q2: 提示 "SDL.h: No such file"
@@ -548,9 +434,6 @@ brew install verilator
 ```bash
 # Ubuntu
 sudo apt-get install libsdl2-dev
-
-# Mac
-brew install sdl2
 ```
 
 #### Q3: 提示 "Permission denied" 运行脚本时
@@ -820,30 +703,6 @@ $ cd ~/Projects/MyVGA/sim
    $ cd Pro<Tab>          # 补全为 Projects / Completes to Projects
    ```
 
-### A.2 Mac 命令行基础 / Mac Command Line Basics
-
-#### A.2.1 如何打开终端？/ How to Open Terminal on Mac?
-
-**三种方法 / Three methods:**
-
-1. **Spotlight 搜索 / Spotlight Search**: 按 `Cmd` + `Space`，输入 "terminal"，回车
-2. **Finder**: 应用程序(Applications) → 实用工具(Utilities) → 终端(Terminal)
-3. **Launchpad**: 找到"其他"文件夹 → 终端
-
-#### A.2.2 Mac 与 Linux 命令的区别 / Differences Between Mac and Linux Commands
-
-大部分命令相同，但有几点重要区别：
-
-Most commands are the same, but there are a few important differences:
-
-| 功能 / Function | Linux (Ubuntu) | Mac |
-|----------------|----------------|-----|
-| 包管理器 / Package Manager | `apt` | `brew` (Homebrew) |
-| 安装软件 / Install software | `sudo apt install xxx` | `brew install xxx` |
-| 更新软件列表 / Update package list | `sudo apt update` | `brew update` |
-
----
-
 ## Appendix B. 系统安装 / System Installation
 
 ### B.1 手动安装方案 / Manual Installation
@@ -858,28 +717,32 @@ Most commands are the same, but there are a few important differences:
 
 1. 访问官网 / Visit official website: https://www.virtualbox.org/wiki/Downloads
 
-2. 下载 Windows 版本的安装程序 / Download the Windows installer:
-   - `VirtualBox-7.x.x-Win.exe`
+2. 根据你的宿主机系统下载对应版本的安装程序 / Download the installer for your host OS:
+   - Windows → **Windows hosts**
+   - Mac (Intel) → **macOS / Intel hosts**
+   - Mac (Apple Silicon/M) → **macOS / Apple Silicon hosts**
 
 > 🐧 **Linux 用户注意 / Linux Users Note**:  
 > Linux 用户可以直接在原生 Linux 系统上运行模拟器，无需安装虚拟机。直接跳到 [Section 4 工具安装](#4-工具安装--tool-installation) 安装所需工具即可。  
 > Linux users can run the simulator directly on native Linux without installing a virtual machine. Skip to [Section 4 Tool Installation](#4-工具安装--tool-installation) to install required tools.
 
-> 🍎 **Mac 用户注意 / Mac Users Note**:  
-> Mac 用户请直接使用 [Section 3.3 Mac 原生环境](#33-mac-原生环境--mac-native-environment) 配置，无需安装虚拟机。  
-> Mac users should use [Section 3.3 Mac Native Environment](#33-mac-原生环境--mac-native-environment) directly, no need to install a virtual machine.
-
 3. 运行安装程序，按提示完成安装 / Run the installer and follow the prompts
 
 #### B.1.2 下载 Ubuntu 镜像 / Download Ubuntu ISO
 
-推荐使用 **Ubuntu 22.04 LTS**（长期支持版本）：
+根据宿主机架构下载对应版本的 Ubuntu 镜像：
 
-We recommend **Ubuntu 22.04 LTS** (Long Term Support):
+**Windows / Mac (Intel)** — Ubuntu 22.04 LTS 桌面版（x86_64）：
 
-1. 访问 / Visit: https://ubuntu.com/download/desktop
-2. 下载 `ubuntu-22.04.x-desktop-amd64.iso`
+1. 访问 / Visit: https://releases.ubuntu.com/22.04/
+2. 下载 "64-bit PC (AMD64) desktop image"
 3. 文件大小约 / File size: ~4-5 GB
+
+**Mac (Apple Silicon/M)** — Ubuntu 24.04 LTS Server 版（ARM64）：
+
+1. 访问 / Visit: https://cdimage.ubuntu.com/releases/24.04.4/release/
+2. 下载 "64-bit ARM (ARMv8/AArch64) server install image"
+3. 文件大小约 / File size: ~2-3 GB
 
 #### B.1.3 创建虚拟机 / Create Virtual Machine
 
@@ -890,24 +753,20 @@ We recommend **Ubuntu 22.04 LTS** (Long Term Support):
 2. 配置虚拟机 / Configure VM:
    ```
    Name: Ubuntu-VGA-Sim
-   Folder: 选择一个有足够空间的文件夹（建议至少 30GB）/ Choose folder with enough space (recommend 30GB+)
+   Folder: 选择一个有足够空间的文件夹 / Choose folder with enough space
    ISO Image: 选择下载的 Ubuntu ISO 文件 / Select downloaded Ubuntu ISO
    Type: Linux
-   Version: Ubuntu (64-bit)
+   Version: Windows / Mac (Intel) 选择 Ubuntu 22.04；Mac (Apple Silicon/M) 选择对应 Ubuntu 24.04 的版本
    ```
 
 3. 硬件配置 / Hardware configuration:
    ```
-   Base Memory: 4096 MB (4GB) 或更多 / or more
-   Processors: 2 核或更多 / cores or more
+   使用默认配置 / Use default settings
    ```
 
 4. 虚拟硬盘 / Virtual Hard Disk:
    ```
-   Create a Virtual Hard Disk Now: Yes
-   Disk Size: 25.00 GB (建议 / Recommended: 30GB)
-   Hard Disk File Type: VDI (VirtualBox Disk Image)
-   Storage: Dynamically allocated（动态分配，节省空间 / dynamically allocated, saves space）
+   使用默认配置，但 Disk Size 尽量设置大一些 / Use default settings, but set Disk Size as large as possible
    ```
 
 5. 点击 "Finish"，虚拟机创建完成 / Click "Finish" to complete VM creation
@@ -948,11 +807,25 @@ We recommend **Ubuntu 22.04 LTS** (Long Term Support):
 
 10. 重启虚拟机 / Restart VM
 
+> ⚠️ **Mac (Apple Silicon/M) 用户注意 / Mac (Apple Silicon/M) Users Note**:
+> 你安装的是 Ubuntu Server 版本，默认没有图形界面。安装完成后需要手动安装桌面环境并启用图形界面：
+> ```bash
+> sudo apt update
+> sudo apt install ubuntu-desktop
+> sudo systemctl set-default graphical.target
+> sudo systemctl start gdm3
+> ```
+> 如果 `gdm3` 启动失败，先确保安装完整：/ If `gdm3` fails to start, ensure the installation is complete first:
+> ```bash
+> sudo apt install gdm3 ubuntu-desktop --reinstall
+> ```
+> 安装完成后重启虚拟机即可进入图形界面。/ After installation, restart the VM to enter the graphical interface.
+
 #### B.1.5 安装增强功能与设置共享文件夹 / Install Guest Additions & Shared Folder
 
-共享文件夹让你可以在 Windows/Mac 和 Ubuntu 之间方便地传输文件。
+共享文件夹让你可以在 Windows 和 Ubuntu 之间方便地传输文件。
 
-Shared folders allow convenient file transfer between Windows/Mac and Ubuntu.
+Shared folders allow convenient file transfer between Windows and Ubuntu.
 
 **安装 VirtualBox Guest Additions / Install VirtualBox Guest Additions:**
 
@@ -967,16 +840,26 @@ Shared folders allow convenient file transfer between Windows/Mac and Ubuntu.
 
 4. 右键点击空白处 → "Open in Terminal" / Right-click → "Open in Terminal"
 
-5. 运行安装脚本 / Run installation script:
+5. 先安装编译依赖 / Install build dependencies first:
    ```bash
-   sudo ./VBoxLinuxAdditions.run
+   sudo apt install build-essential
    ```
 
-6. 输入密码，等待安装完成 / Enter password, wait for completion
+6. 运行安装脚本 / Run installation script:
+   - Windows / Mac (Intel):
+     ```bash
+     sudo ./VBoxLinuxAdditions.run
+     ```
+   - Mac (Apple Silicon/M):
+     ```bash
+     sudo ./VBoxLinuxAdditions-arm64.run
+     ```
 
-7. 重启虚拟机 / Restart VM: `sudo reboot`
+7. 输入密码，等待安装完成 / Enter password, wait for completion
 
-8. 验证 Guest Additions 服务是否运行 / Verify Guest Additions service is running:
+8. 重启虚拟机 / Restart VM: `sudo reboot`
+
+9. 验证 Guest Additions 服务是否运行 / Verify Guest Additions service is running:
    ```bash
    sudo systemctl status vboxadd-service
    ```
@@ -990,7 +873,7 @@ Shared folders allow convenient file transfer between Windows/Mac and Ubuntu.
 
 3. 配置共享文件夹 / Configure:
    ```
-   Folder Path: 选择 Windows/Mac 上的一个文件夹 / Select a folder on Windows/Mac
+   Folder Path: 选择 Windows 上的一个文件夹 / Select a folder on Windows
    Folder Name: shared
    勾选 / Check: Auto-mount
    勾选 / Check: Make Permanent
@@ -1047,19 +930,4 @@ WSL is a Linux subsystem built into Windows 10/11, allowing Linux to run without
      echo 'export DISPLAY=:0.0' >> ~/.bashrc
      source ~/.bashrc
      ```
-
-### B.3 Mac 原生环境 / Mac Native Environment
-
-如果你使用 Mac，且不想使用虚拟机，可以直接在 macOS 上配置环境。
-
-If you use Mac and don't want to use a virtual machine, you can configure the environment directly on macOS.
-
-**前置要求 / Prerequisites:**
-- macOS 15.0 (Sequoia) 或更高版本 / or later
-
-> 💡 **下一步 / Next Step**:  
-> Mac 用户环境配置请直接跳到 [Section 4.2 Mac 安装步骤](#42-mac-安装步骤--mac-installation) 安装所需工具。  
-> Mac users, please skip directly to [Section 4.2 Mac Installation](#42-mac-安装步骤--mac-installation) to install required tools.
-
----
 
