@@ -102,7 +102,8 @@ Before using the simulator, it is recommended to install the following tools:
 |------|------|
 | 用途 / Purpose | 图形化管理代码仓库 / Manage repositories with GUI |
 | 说明 / Note | Linux 版本为社区维护 / Community-maintained for Linux |
-| 下载 / Download | https://github.com/shiftkey/desktop/releases |
+| 下载 / Download | https://github.com/shiftkey/desktop/releases/tag/release-3.4.13-linux1 |
+| 安装 / Install | 根据宿主机架构下载对应 `.deb`：<br>• Windows / Mac (Intel) → `GitHubDesktop-linux-amd64-3.4.13-linux1.deb`<br>• Mac (Apple Silicon/M) → `GitHubDesktop-linux-arm64-3.4.13-linux1.deb`<br>然后在 Ubuntu 终端运行 `sudo apt install ./GitHubDesktop-*.deb` 安装 / Download the `.deb` matching your host CPU:<br>• Windows / Mac (Intel) → `GitHubDesktop-linux-amd64-3.4.13-linux1.deb`<br>• Mac (Apple Silicon/M) → `GitHubDesktop-linux-arm64-3.4.13-linux1.deb`<br>Then run `sudo apt install ./GitHubDesktop-*.deb` in Ubuntu terminal |
 
 #### 4.1 安装所需工具 / Install Required Tools
 
