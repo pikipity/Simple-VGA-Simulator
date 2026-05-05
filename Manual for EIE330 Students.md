@@ -840,16 +840,26 @@ Shared folders allow convenient file transfer between Windows and Ubuntu.
 
 4. 右键点击空白处 → "Open in Terminal" / Right-click → "Open in Terminal"
 
-5. 运行安装脚本 / Run installation script:
+5. 先安装编译依赖 / Install build dependencies first:
    ```bash
-   sudo ./VBoxLinuxAdditions.run
+   sudo apt install build-essential
    ```
 
-6. 输入密码，等待安装完成 / Enter password, wait for completion
+6. 运行安装脚本 / Run installation script:
+   - Windows / Mac (Intel):
+     ```bash
+     sudo ./VBoxLinuxAdditions.run
+     ```
+   - Mac (Apple Silicon/M):
+     ```bash
+     sudo ./VBoxLinuxAdditions-arm64.run
+     ```
 
-7. 重启虚拟机 / Restart VM: `sudo reboot`
+7. 输入密码，等待安装完成 / Enter password, wait for completion
 
-8. 验证 Guest Additions 服务是否运行 / Verify Guest Additions service is running:
+8. 重启虚拟机 / Restart VM: `sudo reboot`
+
+9. 验证 Guest Additions 服务是否运行 / Verify Guest Additions service is running:
    ```bash
    sudo systemctl status vboxadd-service
    ```
