@@ -756,21 +756,17 @@ $ cd ~/Projects/MyVGA/sim
    Folder: 选择一个有足够空间的文件夹 / Choose folder with enough space
    ISO Image: 选择下载的 Ubuntu ISO 文件 / Select downloaded Ubuntu ISO
    Type: Linux
-   Version: Ubuntu (64-bit)
+   Version: Windows / Mac (Intel) 选择 Ubuntu 22.04；Mac (Apple Silicon/M) 选择对应 Ubuntu 24.04 的版本
    ```
 
 3. 硬件配置 / Hardware configuration:
    ```
-   Base Memory: 4096 MB (4GB) 或更多 / or more
-   Processors: 2 核或更多 / cores or more
+   使用默认配置 / Use default settings
    ```
 
 4. 虚拟硬盘 / Virtual Hard Disk:
    ```
-   Create a Virtual Hard Disk Now: Yes
-   Disk Size: 25.00 GB (建议 / Recommended: 30GB)
-   Hard Disk File Type: VDI (VirtualBox Disk Image)
-   Storage: Dynamically allocated（动态分配，节省空间 / dynamically allocated, saves space）
+   使用默认配置，但 Disk Size 尽量设置大一些 / Use default settings, but set Disk Size as large as possible
    ```
 
 5. 点击 "Finish"，虚拟机创建完成 / Click "Finish" to complete VM creation
@@ -810,6 +806,20 @@ $ cd ~/Projects/MyVGA/sim
 9. 等待安装完成（约 10-20 分钟）/ Wait for installation (about 10-20 minutes)
 
 10. 重启虚拟机 / Restart VM
+
+> ⚠️ **Mac (Apple Silicon/M) 用户注意 / Mac (Apple Silicon/M) Users Note**:
+> 你安装的是 Ubuntu Server 版本，默认没有图形界面。安装完成后需要手动安装桌面环境并启用图形界面：
+> ```bash
+> sudo apt update
+> sudo apt install ubuntu-desktop
+> sudo systemctl set-default graphical.target
+> sudo systemctl start gdm3
+> ```
+> 如果 `gdm3` 启动失败，先确保安装完整：/ If `gdm3` fails to start, ensure the installation is complete first:
+> ```bash
+> sudo apt install gdm3 ubuntu-desktop --reinstall
+> ```
+> 安装完成后重启虚拟机即可进入图形界面。/ After installation, restart the VM to enter the graphical interface.
 
 #### B.1.5 安装增强功能与设置共享文件夹 / Install Guest Additions & Shared Folder
 
