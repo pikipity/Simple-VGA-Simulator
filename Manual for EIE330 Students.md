@@ -753,7 +753,7 @@ $ cd ~/Projects/MyVGA/sim
 2. 配置虚拟机 / Configure VM:
    ```
    Name: Ubuntu-VGA-Sim
-   Folder: 选择一个有足够空间的文件夹（建议至少 30GB）/ Choose folder with enough space (recommend 30GB+)
+   Folder: 选择一个有足够空间的文件夹 / Choose folder with enough space
    ISO Image: 选择下载的 Ubuntu ISO 文件 / Select downloaded Ubuntu ISO
    Type: Linux
    Version: Ubuntu (64-bit)
