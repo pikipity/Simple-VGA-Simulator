@@ -730,13 +730,19 @@ $ cd ~/Projects/MyVGA/sim
 
 #### B.1.2 下载 Ubuntu 镜像 / Download Ubuntu ISO
 
-推荐使用 **Ubuntu 22.04 LTS**（长期支持版本）：
+根据宿主机架构下载对应版本的 Ubuntu 镜像：
 
-We recommend **Ubuntu 22.04 LTS** (Long Term Support):
+**Windows / Mac (Intel)** — Ubuntu 22.04 LTS 桌面版（x86_64）：
 
-1. 访问 / Visit: https://ubuntu.com/download/desktop
-2. 下载 `ubuntu-22.04.x-desktop-amd64.iso`
+1. 访问 / Visit: https://releases.ubuntu.com/22.04/
+2. 下载 "64-bit PC (AMD64) desktop image"
 3. 文件大小约 / File size: ~4-5 GB
+
+**Mac (Apple Silicon/M)** — Ubuntu 24.04 LTS Server 版（ARM64）：
+
+1. 访问 / Visit: https://cdimage.ubuntu.com/releases/24.04.4/release/
+2. 下载 "64-bit ARM (ARMv8/AArch64) server install image"
+3. 文件大小约 / File size: ~2-3 GB
 
 #### B.1.3 创建虚拟机 / Create Virtual Machine
 
