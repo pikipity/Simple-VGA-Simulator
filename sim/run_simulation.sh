@@ -112,7 +112,7 @@ fi
 # Step 1: Compile Verilog code with Verilator
 echo "---------------------------------"
 echo "Step 1: Run Verilator Compiler..."
-VERILATOR_OUTPUT=$(verilator -Wall --cc --exe -Wno-fatal -Wno-EOFNEWLINE -Wno-UNUSEDPARAM -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS" 2>&1)
+VERILATOR_OUTPUT=$(verilator --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v $LDFLAGS -CFLAGS "$SDL_CFLAGS" 2>&1)
 VERILATOR_EXIT_CODE=$?
 
 echo "$VERILATOR_OUTPUT"
