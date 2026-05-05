@@ -9,12 +9,11 @@
   - [1. 简介 / Introduction](#1-简介--introduction)
     - [1.1 模拟器功能 / Simulator Features](#11-模拟器功能--simulator-features)
     - [1.2 系统要求 / System Requirements](#12-系统要求--system-requirements)
-  - [4. 工具安装 / Tool Installation](#4-工具安装--tool-installation)
-    - [4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation](#41-ubuntulinux-安装步骤--ubuntulinux-installation)
-      - [4.1.0 安装开发工具 / Install Development Tools](#410-安装开发工具--install-development-tools)
-      - [4.1.1 安装所需工具 / Install Required Tools](#411-安装所需工具--install-required-tools)
-      - [4.1.2 安装依赖问题排查 / Dependency Troubleshooting](#412-安装依赖问题排查--dependency-troubleshooting)
-    - [4.2 验证安装 / Verify Installation](#42-验证安装--verify-installation)
+  - [4. Ubuntu工具安装 / Ubuntu Tool Installation](#4-ubuntu工具安装--ubuntu-tool-installation)
+    - [4.0 安装开发工具 / Install Development Tools](#40-安装开发工具--install-development-tools)
+    - [4.1 安装所需工具 / Install Required Tools](#41-安装所需工具--install-required-tools)
+    - [4.2 安装依赖问题排查 / Dependency Troubleshooting](#42-安装依赖问题排查--dependency-troubleshooting)
+    - [4.3 验证安装 / Verify Installation](#43-验证安装--verify-installation)
   - [5. 下载模拟器 / Download Simulator](#5-下载模拟器--download-simulator)
   - [6. 使用教程 / Usage Tutorial](#6-使用教程--usage-tutorial)
     - [6.1 了解开发板模块 / Understanding the Development Board](#61-了解开发板模块--understanding-the-development-board)
@@ -76,15 +75,14 @@ This manual is designed for FPGA course students, providing detailed instruction
 
 ---
 
-## 4. 工具安装 / Tool Installation
+## 4. Ubuntu工具安装 / Ubuntu Tool Installation
 
 
 > 📖 **前置知识说明 / Prerequisites Note**: 如果你不熟悉 Linux 命令行或尚未安装操作系统，请参考 [Appendix A：准备工作](#a-准备工作--prerequisites) 和 [Appendix B：系统安装](#b-系统安装--system-installation)。
 > If you are not familiar with the Linux command line or have not yet installed an operating system, please refer to [Appendix A: Prerequisites](#a-准备工作--prerequisites) and [Appendix B: System Installation](#b-系统安装--system-installation).
 
-### 4.1 Ubuntu/Linux 安装步骤 / Ubuntu/Linux Installation
 
-#### 4.1.0 安装开发工具 / Install Development Tools
+#### 4.0 安装开发工具 / Install Development Tools
 
 在使用模拟器之前，建议安装以下工具：
 
@@ -106,7 +104,7 @@ Before using the simulator, it is recommended to install the following tools:
 | 说明 / Note | Linux 版本为社区维护 / Community-maintained for Linux |
 | 下载 / Download | https://github.com/shiftkey/desktop/releases |
 
-#### 4.1.1 安装所需工具 / Install Required Tools
+#### 4.1 安装所需工具 / Install Required Tools
 
 运行以下命令，按顺序安装所有需要的软件包：
 
@@ -137,7 +135,7 @@ sudo apt-get install git
 - 看到命令提示符返回，说明安装完成  
   Installation is complete when the command prompt returns
 
-#### 4.1.2 安装依赖问题排查 / Dependency Troubleshooting
+#### 4.2 安装依赖问题排查 / Dependency Troubleshooting
 
 如果在安装 `libsdl2-dev` 时遇到如下错误：
 
@@ -165,7 +163,7 @@ sudo apt update
 sudo apt install libsdl2-dev
 ```
 
-### 4.2 验证安装 / Verify Installation
+### 4.3 验证安装 / Verify Installation
 
 安装完成后，验证所有工具是否正确安装：
 
