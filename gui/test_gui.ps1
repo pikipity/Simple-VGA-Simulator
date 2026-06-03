@@ -37,6 +37,13 @@ if (Test-Path $proxyDir) {
         Write-Host ""
         Write-Host "All checks passed. Skipping setup, building directly..." -ForegroundColor Green
         Set-Location $proxyDir
+        # Copy custom icon to Windows runner resources
+        $iconSource = "$sourceDir\assets\app_icon.ico"
+        $iconTarget = "$proxyDir\windows\runner\resources\app_icon.ico"
+        if (Test-Path $iconSource) {
+            Copy-Item $iconSource $iconTarget -Force
+            Write-Host "  Custom icon copied to Windows resources" -ForegroundColor Green
+        }
         flutter build windows
         if ($LASTEXITCODE -eq 0) {
             $exe = Get-ChildItem "$proxyDir\build\windows\x64\runner\Release\*.exe" | Select-Object -First 1
@@ -84,6 +91,14 @@ if ($needRebuild) {
     Write-Host "[5/5] Running flutter create --platforms=windows ..."
     Set-Location $proxyDir
     flutter create --platforms=windows . 2>&1 | ForEach-Object { Write-Host "  $_" }
+    
+    # Copy custom icon to Windows runner resources after create
+    $iconSource = "$sourceDir\assets\app_icon.ico"
+    $iconTarget = "$proxyDir\windows\runner\resources\app_icon.ico"
+    if (Test-Path $iconSource) {
+        Copy-Item $iconSource $iconTarget -Force
+        Write-Host "  Custom icon copied to Windows resources" -ForegroundColor Green
+    }
 }
 
 # ============ Compile ============

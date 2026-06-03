@@ -23,6 +23,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/icon.png
+    - assets/app_icon.ico
     - assets/templates/development_board.v.tpl
     - assets/sim/simulator.cpp
     - assets/sim/run_simulation.sh
