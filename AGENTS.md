@@ -140,7 +140,7 @@ The `run_simulation.sh` script performs the following steps:
 1. **Step 0: Cleanup** - Removes previous `obj_dir/` build artifacts
 2. **Step 1: Verilation** - Compiles Verilog to C++ using:
    ```bash
-   verilator -O3 --Wno-fatal -Wall --cc --exe -I<rtl_path> simulator.cpp DevelopmentBoard.v \
+   verilator -Wall --cc --exe -I<rtl_path> simulator.cpp DevelopmentBoard.v \
        -LDFLAGS -lSDL2 -LDFLAGS -lpthread
    ```
    > The `run_simulation.sh` script automatically detects SDL2 flags using `sdl2-config`.
@@ -1594,7 +1594,7 @@ for flag in $SDL_LIBS; do
 done
 
 # Verilator command
-verilator -O3 --Wno-fatal -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v \
+verilator -Wall --cc --exe -I"$INCLUDE_DIR" simulator.cpp DevelopmentBoard.v \
     $LDFLAGS -CFLAGS "$SDL_CFLAGS"
 ```
 
