@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.target }}
+    name: Build ${{ matrix.target }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,38 +21,30 @@ jobs:
         include:
           - os: ubuntu-22.04
             target: linux
+            arch: amd64
             build_path: build/linux/x64/release/bundle
             artifact_name: vga-launcher-linux
             archive_ext: tar.gz
           - os: ubuntu-24.04-arm
             target: linux
+            arch: arm64
             build_path: build/linux/arm64/release/bundle
             artifact_name: vga-launcher-linux-arm64
             archive_ext: tar.gz
-          - os: windows-latest
-            target: windows
-            build_path: build/windows/x64/runner/Release
-            artifact_name: vga-launcher-windows
-            archive_ext: zip
-          - os: macos-latest
-            target: macos
-            build_path: build/macos/Build/Products/Release
-            artifact_name: vga-launcher-macos
-            archive_ext: zip
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Flutter (x86_64)
-        if: '!contains(matrix.os, ''arm'')'
+        if: matrix.arch == 'amd64'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
       - name: Setup Flutter (ARM64)
-        if: contains(matrix.os, 'arm')
+        if: matrix.arch == 'arm64'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y git curl
@@ -61,7 +53,6 @@ jobs:
           echo "$HOME/flutter/bin/cache/dart-sdk/bin" >> $GITHUB_PATH
 
       - name: Install Linux dependencies
-        if: contains(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update -y
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
@@ -69,8 +60,6 @@ jobs:
       - name: Enable desktop support
         run: |
           flutter config --enable-linux-desktop
-          flutter config --enable-windows-desktop
-          flutter config --enable-macos-desktop
 
       - name: Get dependencies
         working-directory: gui
@@ -84,36 +73,78 @@ jobs:
         working-directory: gui
         run: flutter build ${{ matrix.target }} --release
 
-      - name: List build output
+      - name: Prepare package with icon and desktop entry
         working-directory: gui
-        shell: bash
         run: |
-          echo "=== build/ top level ==="
-          ls -la build/ 2>/dev/null || true
-          echo "=== Release directories ==="
-          find build -maxdepth 4 -type d -iname "*release*" 2>/dev/null || true
-          echo "=== exe/app files ==="
-          find build -maxdepth 5 \( -name "*.exe" -o -name "*.app" \) 2>/dev/null || true
+          BUNDLE_DIR="${{ matrix.build_path }}"
+
+          # Copy icon into bundle
+          cp assets/icon.png "$BUNDLE_DIR/icon.png"
+
+          # Create .desktop file with placeholders
+          cat > "$BUNDLE_DIR/vga-launcher.desktop" << 'DESKTOP_EOF'
+[Desktop Entry]
+Version=1.0
+Name=Simple VGA Simulator
+Comment=VGA Simulator Launcher for FPGA Development
+Exec=@@EXEC_PATH@@
+Icon=@@ICON_PATH@@
+Type=Application
+Terminal=false
+Categories=Development;Electronics;
+DESKTOP_EOF
+
+          # Create install.sh
+          cat > "$BUNDLE_DIR/install.sh" << 'INSTALL_EOF'
+#!/bin/bash
+set -e
+
+# Resolve script directory, handling spaces correctly
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+INSTALL_DIR="$HOME/.local/share/vga-launcher"
+ICON_DIR="$HOME/.local/share/icons"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+echo "Installing Simple VGA Simulator..."
+
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$ICON_DIR"
+mkdir -p "$DESKTOP_DIR"
+
+# Copy application files (exclude install.sh and .desktop template)
+for f in "$SCRIPT_DIR"/*; do
+    fname=$(basename "$f")
+    if [ "$fname" != "install.sh" ] && [ "$fname" != "vga-launcher.desktop" ]; then
+        cp -r "$f" "$INSTALL_DIR/"
+    fi
+done
+
+# Copy icon to standard icon location
+cp "$SCRIPT_DIR/icon.png" "$ICON_DIR/vga-launcher.png"
+
+# Generate .desktop with absolute paths (quoted to handle spaces)
+sed -e "s|@@EXEC_PATH@@|\"$INSTALL_DIR/vga_launcher\"|g" \
+    -e "s|@@ICON_PATH@@|vga-launcher|g" \
+    "$SCRIPT_DIR/vga-launcher.desktop" > "$DESKTOP_DIR/vga-launcher.desktop"
+
+chmod +x "$DESKTOP_DIR/vga-launcher.desktop"
+
+# Update desktop database
+if command -v update-desktop-database &> /dev/null; then
+    update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
+fi
+
+echo "Installation complete!"
+echo "You can now launch 'Simple VGA Simulator' from your applications menu."
+echo "Or run directly: \"$INSTALL_DIR/vga_launcher\""
+INSTALL_EOF
+
+          chmod +x "$BUNDLE_DIR/install.sh"
 
       - name: Package (Linux)
-        if: matrix.target == 'linux'
         working-directory: gui
         run: tar czf ../${{ matrix.artifact_name }}.${{ matrix.archive_ext }} -C ${{ matrix.build_path }} .
-
-      - name: Package (Windows)
-        if: matrix.target == 'windows'
-        working-directory: gui
-        shell: bash
-        run: 7z a ../${{ matrix.artifact_name }}.${{ matrix.archive_ext }} ./${{ matrix.build_path }}/*
-
-      - name: Package (macOS)
-        if: matrix.target == 'macos'
-        working-directory: gui
-        run: |
-          cd ${{ matrix.build_path }}
-          # Zip the .app bundle itself, not its contents
-          APP_NAME=$(ls -d *.app | head -1)
-          ditto -c -k --sequesterRsrc --keepParent "$APP_NAME" "$OLDPWD/../${{ matrix.artifact_name }}.${{ matrix.archive_ext }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -152,7 +183,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            artifacts/**/*.zip
             artifacts/**/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
