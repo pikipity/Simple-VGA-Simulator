@@ -81,64 +81,60 @@ jobs:
           # Copy icon into bundle
           cp assets/icon.png "$BUNDLE_DIR/icon.png"
 
-          # Create .desktop file with placeholders
-          cat > "$BUNDLE_DIR/vga-launcher.desktop" << 'DESKTOP_EOF'
-[Desktop Entry]
-Version=1.0
-Name=Simple VGA Simulator
-Comment=VGA Simulator Launcher for FPGA Development
-Exec=@@EXEC_PATH@@
-Icon=@@ICON_PATH@@
-Type=Application
-Terminal=false
-Categories=Development;Electronics;
-DESKTOP_EOF
+          # Create .desktop file (using echo to avoid YAML heredoc issues)
+          echo '[Desktop Entry]' > "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Version=1.0' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Name=Simple VGA Simulator' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Comment=VGA Simulator Launcher for FPGA Development' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Exec=@@EXEC_PATH@@' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Icon=@@ICON_PATH@@' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Type=Application' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Terminal=false' >> "$BUNDLE_DIR/vga-launcher.desktop"
+          echo 'Categories=Development;Electronics;' >> "$BUNDLE_DIR/vga-launcher.desktop"
 
-          # Create install.sh
-          cat > "$BUNDLE_DIR/install.sh" << 'INSTALL_EOF'
-#!/bin/bash
-set -e
-
-# Resolve script directory, handling spaces correctly
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
-INSTALL_DIR="$HOME/.local/share/vga-launcher"
-ICON_DIR="$HOME/.local/share/icons"
-DESKTOP_DIR="$HOME/.local/share/applications"
-
-echo "Installing Simple VGA Simulator..."
-
-mkdir -p "$INSTALL_DIR"
-mkdir -p "$ICON_DIR"
-mkdir -p "$DESKTOP_DIR"
-
-# Copy application files (exclude install.sh and .desktop template)
-for f in "$SCRIPT_DIR"/*; do
-    fname=$(basename "$f")
-    if [ "$fname" != "install.sh" ] && [ "$fname" != "vga-launcher.desktop" ]; then
-        cp -r "$f" "$INSTALL_DIR/"
-    fi
-done
-
-# Copy icon to standard icon location
-cp "$SCRIPT_DIR/icon.png" "$ICON_DIR/vga-launcher.png"
-
-# Generate .desktop with absolute paths (quoted to handle spaces)
-sed -e "s|@@EXEC_PATH@@|\"$INSTALL_DIR/vga_launcher\"|g" \
-    -e "s|@@ICON_PATH@@|vga-launcher|g" \
-    "$SCRIPT_DIR/vga-launcher.desktop" > "$DESKTOP_DIR/vga-launcher.desktop"
-
-chmod +x "$DESKTOP_DIR/vga-launcher.desktop"
-
-# Update desktop database
-if command -v update-desktop-database &> /dev/null; then
-    update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
-fi
-
-echo "Installation complete!"
-echo "You can now launch 'Simple VGA Simulator' from your applications menu."
-echo "Or run directly: \"$INSTALL_DIR/vga_launcher\""
-INSTALL_EOF
+          # Create install.sh (using echo to avoid YAML heredoc issues)
+          echo '#!/bin/bash' > "$BUNDLE_DIR/install.sh"
+          echo 'set -e' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo '# Resolve script directory, handling spaces correctly' >> "$BUNDLE_DIR/install.sh"
+          echo 'SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo 'INSTALL_DIR="$HOME/.local/share/vga-launcher"' >> "$BUNDLE_DIR/install.sh"
+          echo 'ICON_DIR="$HOME/.local/share/icons"' >> "$BUNDLE_DIR/install.sh"
+          echo 'DESKTOP_DIR="$HOME/.local/share/applications"' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo 'echo "Installing Simple VGA Simulator..."' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo 'mkdir -p "$INSTALL_DIR"' >> "$BUNDLE_DIR/install.sh"
+          echo 'mkdir -p "$ICON_DIR"' >> "$BUNDLE_DIR/install.sh"
+          echo 'mkdir -p "$DESKTOP_DIR"' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo '# Copy application files (exclude install.sh and .desktop template)' >> "$BUNDLE_DIR/install.sh"
+          echo 'for f in "$SCRIPT_DIR"/*; do' >> "$BUNDLE_DIR/install.sh"
+          echo '    fname=$(basename "$f")' >> "$BUNDLE_DIR/install.sh"
+          echo '    if [ "$fname" != "install.sh" ] && [ "$fname" != "vga-launcher.desktop" ]; then' >> "$BUNDLE_DIR/install.sh"
+          echo '        cp -r "$f" "$INSTALL_DIR/"' >> "$BUNDLE_DIR/install.sh"
+          echo '    fi' >> "$BUNDLE_DIR/install.sh"
+          echo 'done' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo '# Copy icon to standard icon location' >> "$BUNDLE_DIR/install.sh"
+          echo 'cp "$SCRIPT_DIR/icon.png" "$ICON_DIR/vga-launcher.png"' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo '# Generate .desktop with absolute paths (quoted to handle spaces)' >> "$BUNDLE_DIR/install.sh"
+          echo 'sed -e "s|@@EXEC_PATH@@|\"$INSTALL_DIR/vga_launcher\"|g" \' >> "$BUNDLE_DIR/install.sh"
+          echo '    -e "s|@@ICON_PATH@@|vga-launcher|g" \' >> "$BUNDLE_DIR/install.sh"
+          echo '    "$SCRIPT_DIR/vga-launcher.desktop" > "$DESKTOP_DIR/vga-launcher.desktop"' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo 'chmod +x "$DESKTOP_DIR/vga-launcher.desktop"' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo '# Update desktop database' >> "$BUNDLE_DIR/install.sh"
+          echo 'if command -v update-desktop-database &> /dev/null; then' >> "$BUNDLE_DIR/install.sh"
+          echo '    update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true' >> "$BUNDLE_DIR/install.sh"
+          echo 'fi' >> "$BUNDLE_DIR/install.sh"
+          echo '' >> "$BUNDLE_DIR/install.sh"
+          echo 'echo "Installation complete!"' >> "$BUNDLE_DIR/install.sh"
+          echo 'echo "You can now launch Simple VGA Simulator from your applications menu."' >> "$BUNDLE_DIR/install.sh"
+          echo 'echo "Or run directly: $INSTALL_DIR/vga_launcher"' >> "$BUNDLE_DIR/install.sh"
 
           chmod +x "$BUNDLE_DIR/install.sh"
 
