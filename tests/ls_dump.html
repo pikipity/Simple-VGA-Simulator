@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>mock state dump</title></head>
+<body>
+<pre id="out"></pre>
+<pre id="log"></pre>
+<script>
+  const out = document.getElementById('out');
+  const logEl = document.getElementById('log');
+  setInterval(() => {
+    const raw = localStorage.getItem('svs_mock_v1');
+    if (!raw) { out.textContent = '(no state)'; return; }
+    try {
+      const s = JSON.parse(raw);
+      out.textContent = 'ts=' + s.ts + ' board=' + JSON.stringify(s.board) + ' buttons=' + JSON.stringify(s.buttons);
+    } catch (e) { out.textContent = 'parse error'; }
+  }, 500);
+  const bc = new BroadcastChannel('svs_mock_v1');
+  bc.onmessage = (ev) => {
+    const d = ev.data || {};
+    const line = new Date().toISOString().slice(17, 23) + ' ' + d.kind + ' ' +
+      (d.kind === 'msg' ? JSON.stringify(d.payload) : 'state board=' + JSON.stringify(d.state.board) + ' buttons=' + JSON.stringify(d.state.buttons));
+    logEl.textContent = (line + '\n' + logEl.textContent).slice(0, 4000);
+  };
+</script>
+</body>
+</html>

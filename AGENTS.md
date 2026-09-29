@@ -1,580 +1,263 @@
-# Simple VGA Simulator - Agent Guide
+# Simple VGA Simulator v2 - 虚拟开发板实验台
 
-## Project Overview
+> **版本说明**：v2 是全面重构（分支 `v2-web-board`）。v1 的 Flutter GUI + SDL2 窗口方案因跨平台失败面过大被废弃（见文末 Change History）。本文档描述 v2 的目标架构，是后续所有开发的设计契约。
 
-Simple VGA Simulator is an FPGA development simulation environment that provides a virtual VGA display, a reset button, 4 custom buttons, and 5 LEDs for testing Verilog designs without physical hardware.
+## 项目概述
 
-The simulator uses **Verilator** to compile Verilog code into C++ and **SDL2** (software rendering) for real-time visualization. It is designed for educational purposes, specifically for EIE330 students learning FPGA and VGA controller design.
+面向 EIE330 课程的**虚拟 FPGA 开发板实验台**。学生在本机浏览器中获得两样东西：
 
-Two ways to run a simulation:
+1. 一套仿 Quartus Prime 的 EDA 工具（工程、综合、布线、生成烧录文件、编程器）
+2. 一块仿真实物布局的虚拟开发板（Cyclone IV EP4CE10F17C8N 芯片、50MHz 晶振、5 个按键、4 个 LED、VGA 接口外接显示器、电源开关）
 
-| Path | Entry Point | Audience |
-|------|-------------|----------|
-| **GUI Launcher** (recommended) | Flutter app in `gui/` | Students, zero-config |
-| **Command Line** | `sim/run_simulation.sh` | CI/CD, advanced users |
+学生体验完整真实流程：写 Verilog → 写 QSF 引脚约束 → Analysis & Synthesis → Fitter（时序报告）→ Assembler（生成 .sof）→ Programmer（USB-Blaster 烧录）→ 上电 → 按按键看现象。**学生对底层实现（Verilator/Yosys）完全无感知**，他们认为自己在用真实的 EDA 工具和开发板。
 
-## Technology Stack
+## 核心设计原则（v2 重构背景）
 
-| Component | Technology |
-|-----------|------------|
-| HDL Simulation | Verilator |
-| Graphics Rendering | SDL2 (software rendering) |
-| Simulation Wrapper | C++ (`sim/simulator.cpp`) |
-| GUI Launcher | Flutter / Dart (`gui/`) |
-| Legacy Helper Tool | Python 3 + tkinter (`sim/PinPlanner.py`) |
-| Target Resolution | 640x480 @ 60Hz |
-| Color Format | RGB565 (16-bit) |
-| System Clock | 50 MHz |
+v1 失败根因：分发的是构建产物，但运行时环境不受控——Flutter 桌面壳、Verilator、SDL2、make、g++ 全部由学生自装且状态各异，失败面是各层环境变量的乘积。
 
-## Project Structure
+v2 的核心原则：**把环境差异降到理论下限**。
+
+1. 渲染交给浏览器（各平台最可靠的运行时）；分发包只含 Python 运行时 + 静态文件 + C++ 源码模板，不链接任何系统 GUI 库
+2. 后端零第三方 Python 依赖（仅用标准库）；前端零构建步骤（原生 ES Modules，无 vendored 库）
+3. 外部工具（verilator / g++ / yosys）锁版本、学生自装，后端负责三级探测（PATH 探测 → 版本验证 → 功能自检）
+4. **无 SDL2、无 GNU Make、无 Flutter**。C++ 编译由后端直接拼 g++ 命令完成
+5. 单机锁死：后端只绑 127.0.0.1，随机 token 鉴权
+
+## 教学幻觉设计（关键需求）
+
+### 两个独立页面
+
+EDA 工具与开发板是**两个独立页面**，让学生明确意识到这是两个东西：
+
+- **页面 A「EDA 工具」**：仿 Quartus 界面。顶部工程栏（工程路径、Top Entity、器件 `Cyclone IV E EP4CE10F17C8`）；左侧 Tasks 流程树（Compile Design → Analysis & Synthesis / Fitter (Place & Route) / Assembler，外加 Programmer）；中间为报告区（Flow Summary / 时序报告 / Pin Planner / Programmer）。**Messages 平时不可见**，收进底部状态栏一个带角标的按钮，编译失败时角标变红，学生按需点开
+- **页面 B「开发板」**：实物摆拍视角。整页是一块板子 + 一台独立显示器（VGA 线连接）。板面元素见下文「板卡定义」。**首次进入默认断电**
+
+两页状态由后端统一持有，WebSocket 同步。
+
+### 烧录与电源语义（对齐真实 JTAG）
+
+| 操作 | 板子表现 |
+|------|---------|
+| 板子断电时点 Programmer | 报错"未检测到开发板，请检查电源和 USB-Blaster 连接" |
+| 烧录成功 | CONF_DONE 灯亮，设计开始运行 |
+| **改代码后重新 Programmer（不断电）** | CONF_DONE 熄灭 → 进度条 → 重新点亮，显示器短暂 No Signal 后**自动运行新程序**。全程不关闭任何页面/窗口 |
+| 断电再上电 | **配置丢失**（SRAM 语义）：CONF_DONE 灭，需重新烧录 |
+| 已上电未烧录 | 电源灯亮，按键无任何效果（IO 未配置） |
+| VGA 时序错误 | 显示器显示 **No Signal**（>500ms 无新帧即判定） |
+| 退出软件 | 板子状态不保留，下次打开回到断电空白态 |
+
+### 按键抖动
+
+真板按键带 4.7KΩ 上拉 + 0.1µF 对地电容（硬件消抖），残余抖动为亚毫秒~2ms 级。仿真器默认注入该量级的随机抖动；开发板页提供不显眼的 "Ideal Input" 开关（默认关=有抖动）。
+
+## 板卡定义（board/ep4ce10_pro.json）
+
+虚拟板照抄野火 EP4CE10_Pro 教学板（原理图：`Doc-2-Schematic Diagram of Development Board.pdf`）的简化子集。引脚分配来自原理图 Sheet 4/5/10/12，已获课程负责人确认：
+
+| 板卡资源 | 丝印 | 原理图网络 | FPGA 引脚 | 有效电平 |
+|---------|------|-----------|-----------|---------|
+| 50MHz 有源晶振 | Y7 | FPGA_CLK | E1 | — |
+| 按键 SW1 | RESET | RESET | M15 | 按下=0（4.7KΩ 上拉） |
+| 按键 SW2 | KEY1 | KEY1 | M2 | 按下=0 |
+| 按键 SW3 | KEY2 | KEY2 | M1 | 按下=0 |
+| 按键 SW4 | KEY3 | KEY3 | E15 | 按下=0 |
+| 按键 SW5 | KEY4 | KEY4 | E16 | 按下=0 |
+| 蓝色 LED | LED2 | LED0 | L7 | 0=亮（阳极经 1KΩ 接 3V3） |
+| 蓝色 LED | LED3 | LED1 | M6 | 0=亮 |
+| 蓝色 LED | LED4 | LED2 | P3 | 0=亮 |
+| 蓝色 LED | LED5 | LED3 | N3 | 0=亮 |
+| VGA 行同步 | — | VGA_HSYNC | C2 | 高有效 |
+| VGA 场同步 | — | VGA_VSYNC | D1 | 高有效 |
+| VGA 数据 | — | VGA_D0~D15 | B4,A2,B5,A6,B6,F6,F7,A7,B7,E8,F8,A8,B8,E7,E6,A5 | RGB565：D[15:11]=R, D[10:5]=G, D[4:0]=B |
+
+VGA 规格：640×480 @ 60Hz，时序参数与 v1 相同（H: sync 96 / back 40 / left 8 / active 640 / right 8 / front 8，V: sync 2 / back 25 / top 8 / active 480 / bottom 8 / front 2；有效区起点 (144, 35)，上升沿检测）。
+
+板卡定义文件同时包含前端布局坐标（SVG 元素位置），板子外观由数据驱动。
+
+## 技术架构
+
+```
+学生双击 main.py（或 PyInstaller 包）
+  └─ Python 标准库 HTTP 服务（127.0.0.1:随机端口 + token + 心跳看门狗）
+       ├─ 页面 A：EDA 工具（工程 → Synthesis → Fitter → Assembler → Programmer）
+       └─ 页面 B：开发板（电源/按键 → 后端；后端 → LED/显示器帧）
+```
+
+### 目录结构
 
 ```
 Simple-VGA-Simulator/
-├── gui/                            # Flutter GUI Launcher (recommended)
-│   ├── lib/                        # Dart source code
-│   │   ├── main.dart, app.dart     # Entry point
-│   │   ├── models/                 # Data models (dependency, project config, verilog module)
-│   │   ├── screens/                # launcher_screen.dart (single-screen UI)
-│   │   ├── services/               # Core logic (see "GUI Launcher Architecture")
-│   │   ├── state/                  # launcher_state.dart (Provider state)
-│   │   └── widgets/                # UI components (cards, log console, etc.)
-│   ├── assets/
-│   │   ├── sim/                    # simulator.cpp + run_simulation.sh templates
-│   │   │                           #   ⚠️ MUST stay in sync with sim/ (see sync rules)
-│   │   ├── templates/              # development_board.v.tpl
-│   │   └── *.png, *.ico            # App icons
-│   ├── Example/                    # RTL-only example copies for GUI testing
-│   └── test_gui.ps1                # Windows build helper (project on non-system drive)
-├── sim/                            # Core simulator files (CLI path)
-│   ├── PinPlanner.py               # Legacy GUI tool (CLI backup for board generation)
-│   ├── DevelopmentBoard.v          # Top-level Verilog wrapper template
-│   ├── simulator.cpp               # C++ simulation wrapper with SDL2
-│   └── run_simulation.sh           # Build and run script
-├── Example/                        # Example projects (CLI-ready)
-│   ├── Example_1_ColorBar/         # Static color bar demo (RTL/ + sim/)
-│   └── Example_2_BallMove/         # Interactive ball movement demo (RTL/ + sim/)
-├── SchematicDiagram/               # Documentation diagrams
-├── README.md                       # Quick start guide
-├── Manual for EIE330 Students.md   # Detailed student manual
-└── LICENSE                         # MIT License
+├── main.py                     # 启动器：起服务、生成 token、打开浏览器
+├── config.py                   # 版本、锁定工具版本、路径
+├── backend/
+│   ├── app.py                  # HTTP 路由 + 静态托管 + token + 看门狗
+│   ├── ws.py                   # 最小 WebSocket 服务端实现（RFC6455，标准库）
+│   └── services/
+│       ├── diagnostics.py      # verilator/g++/yosys 三级探测与版本验证
+│       ├── project_service.py  # 工程扫描、Verilog ANSI 端口解析
+│       ├── qsf_service.py      # QSF 解析/校验/生成（对照 board JSON）
+│       ├── build_service.py    # 综合(Yosys)/布线(校验+时序估算)/汇编(verilator+g++)
+│       └── board_service.py    # 板卡状态机 + 仿真进程托管 + 帧/事件中继
+├── board/
+│   └── ep4ce10_pro.json        # 板卡定义（引脚表 + 布局）
+├── sim/
+│   ├── simulator.cpp           # 无头仿真器（v2 重写，见下）
+│   └── DevelopmentBoard.v.tpl  # wrapper 模板（v2 固定端口语义）
+├── webui/                      # 纯静态，无构建
+│   ├── index.html              # 页面 A：EDA 工具
+│   ├── board.html              # 页面 B：开发板
+│   ├── js/  css/
+├── Example/                    # 示例工程（.v + .qsf，已迁移到新板语义）
+│   ├── Example_1_ColorBar/
+│   └── Example_2_BallMove/
+├── tests/                      # 所有测试文件只能放这里
+├── SchematicDiagram/           # 文档图
+├── main.spec                   # PyInstaller 打包配置
+└── .github/workflows/
+    ├── build-dev.yml           # dev 分支：四平台构建 + 无头冒烟，不发布
+    └── build-release.yml       # main 分支：四平台构建 + 发布 Release
 ```
 
-## Platform Support
+**已删除（相对 v1）**：`gui/`（Flutter）、`sim/run_simulation.sh`、`sim/PinPlanner.py`、全部 SDL2 依赖。
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| Linux (Ubuntu 22.04+) | ✅ Fully supported | Native or VirtualBox VM |
-| macOS 15.0+ (Sequoia) | ✅ Fully supported | Intel & Apple Silicon |
-| Windows 10/11 (WSL2) | ✅ Supported | GUI falls back to WSL automatically |
-| Windows 10/11 (MSYS2) | ✅ Supported | Native Windows, no WSL required |
+### 学生工程结构
 
-## Prerequisites
-
-### Simulation Environment (Required)
-
-| Tool | Ubuntu / Debian | macOS | Windows (MSYS2) |
-|------|-----------------|-------|-----------------|
-| **Verilator** | `sudo apt install verilator` | `brew install verilator` | `pacman -S mingw-w64-x86_64-verilator` |
-| **SDL2** | `sudo apt install libsdl2-dev` | `brew install sdl2` | `pacman -S mingw-w64-x86_64-SDL2` |
-| **make + g++** | `sudo apt install build-essential` | `xcode-select --install` | `pacman -S make mingw-w64-x86_64-gcc` |
-
-**Verify installation:**
-```bash
-verilator --version      # Should show 4.0+
-sdl2-config --version    # Should show 2.0+
-make --version           # Should show 3.81+
-g++ --version            # Should show 7.0+
+```
+MyProject/
+├── *.v                         # 学生的 Verilog（仅 .v，ANSI 端口）
+└── top.qsf                     # 引脚约束（软件提供模板，Pin Planner 可视化编辑）
 ```
 
-#### Ubuntu 22.04 SDL2 Dependency Issue
+QSF 支持子集（Quartus 真实语法）：
 
-If `libsdl2-dev` installation fails with version mismatch errors (`libpulse-dev`, `libudev-dev`), the installed libraries are newer than the default repository. Add the official updates repository:
-
-```bash
-sudo tee -a /etc/apt/sources.list << 'EOF'
-deb http://archive.ubuntu.com/ubuntu jammy-updates main universe
-deb http://security.ubuntu.com/ubuntu jammy-security main universe
-EOF
-
-sudo apt update
-sudo apt install libsdl2-dev
+```tcl
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_location_assignment PIN_E1 -to clk
+set_location_assignment PIN_M15 -to sys_rst_n
+set_location_assignment PIN_B4 -to vga_data[0]
+create_clock -period 20.000 [get_ports clk]
 ```
 
-#### Windows (WSL2)
+### DevelopmentBoard.v 的语义升级
 
-1. `wsl --install -d Ubuntu-22.04` (PowerShell as Administrator), restart
-2. Inside WSL2: `sudo apt install -y build-essential verilator libsdl2-dev make`
-3. Display environment is auto-configured by `run_simulation.sh` (no manual setup)
-
-#### Windows (MSYS2)
-
-1. Install from https://www.msys2.org/
-2. In MSYS2 MinGW 64-bit terminal: `pacman -Syu`, then install the packages in the table above
-3. Add `C:\tools\msys64\mingw64\bin` and `C:\tools\msys64\usr\bin` to Windows PATH
-
-### GUI Launcher (Optional)
-
-- **Pre-built package (recommended)**: Download from [GitHub Releases](../../releases), extract and run
-- **Build from source**: Install Flutter SDK (Stable, 3.0+), then:
-  ```bash
-  cd gui
-  flutter pub get
-  flutter run -d windows   # or macos / linux
-  ```
-- **Windows with project on non-system drive** (e.g. `D:`, `E:`, VBox shared folder): Flutter cannot build across drive letters. Use the helper script:
-  ```powershell
-  cd gui
-  powershell -ExecutionPolicy Bypass -File test_gui.ps1
-  ```
-  The script creates a proxy project in `C:\Windows\Temp\vga_gui_test`, junctions `lib/` and `assets/`, builds, and launches. Requires **Windows Developer Mode** enabled.
-
-## Build and Run
-
-### GUI Launcher Workflow
-
-1. **Dependency Check** — Verifies Verilator, SDL2, make, g++ (native first, then WSL on Windows)
-2. **Select Project Directory** — Folder containing `.v` files; GUI scans and parses modules
-3. **Select Top Module** — Signal mapping is auto-inferred, adjustable via dropdowns
-4. **Run Simulation** — GUI creates `<RTL>/sim/`, copies templates, generates `DevelopmentBoard.v`, compiles and launches; logs stream to the console and `<RTL>/sim/sim.log`
-
-### CLI Workflow
-
-1. Copy required files to your project's `sim/` directory:
-   - `sim/DevelopmentBoard.v` (edit to instantiate your module)
-   - `sim/simulator.cpp`
-   - `sim/run_simulation.sh`
-2. Make the script executable: `chmod +x run_simulation.sh`
-3. Run with your RTL directory path:
-   ```bash
-   ./run_simulation.sh ../RTL    # RTL in parent directory
-   ./run_simulation.sh           # RTL in the same directory as the script
-   ```
-
-### Build Process Details (run_simulation.sh)
-
-The script performs the following steps:
-
-0. **WSL display auto-config** — If running under WSL and `DISPLAY` is unset, exports `DISPLAY=:0` and sets up `XDG_RUNTIME_DIR` / `WAYLAND_DISPLAY`
-1. **Path validation** — Errors out if the script path contains spaces (GNU Make limitation)
-2. **SDL2 detection** — Searches `sdl2-config` in PATH, `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`; falls back to `-I/usr/include/SDL2 -lSDL2`
-3. **Verilation**:
-   ```bash
-   verilator -O3 --Wno-fatal --cc --exe -I<rtl_path> simulator.cpp DevelopmentBoard.v \
-       -LDFLAGS <sdl_libs> -CFLAGS <sdl_cflags>
-   ```
-4. **Compilation** — `export CXXFLAGS=<sdl_cflags>` (so make receives SDL headers), then:
-   ```bash
-   make -j -C obj_dir -f VDevelopmentBoard.mk VDevelopmentBoard
-   ```
-5. **Execution** — `obj_dir/VDevelopmentBoard`
-
-## Simulator Architecture (sim/simulator.cpp)
-
-### Threading Model
-
-- **Main thread**: SDL initialization, window creation, event loop (`run_event_loop()`)
-- **Simulation thread**: `simulation_loop()` — ticks the clock, samples VGA pixels
-- Shared state uses `std::atomic` (button states, LED states, buffer pointers, quit flags)
-- `cleanup_simulation()` is reentry-safe (atomic guard) and handles thread join + SDL resource release
-
-### Rendering Pipeline
-
-- **Software rendering**: simulation writes RGB float pixels into a double-buffered framebuffer (`buffer_a`/`buffer_b`, x-major layout); no GPU draw calls per pixel
-- **Buffer swap**: `sample_pixel()` sets `buffer_swap_pending` on the v_sync rising edge; `render_sdl()` atomically swaps `write_buffer`/`read_buffer` pointers
-- **Per frame**: float RGB → `SDL_MapRGB` conversion into a 640×480 `SDL_Surface`, then one `SDL_BlitScaled()` onto the window surface (replaces the old ~300k `glRectf` calls per frame)
-- RGB565 → float conversion uses precomputed lookup tables (`RGB5_TO_FLOAT`, `RGB6_TO_FLOAT`)
-
-### Window Layout
-
-Window is created at 800×850 logical pixels with `SDL_WINDOW_ALLOW_HIGHDPI` (actual surface size is read back for HiDPI). Three vertical areas, drawn each frame:
-
-1. **VGA area** — 4:3 aspect maintained, scaled to fit
-2. **LED area** — 5 red LEDs with `LED1`–`LED5` labels (5x5 bitmap font)
-3. **Button area** — 5 clickable virtual buttons (RESET, B2–B5)
-
-### Input Handling (Virtual Buttons)
-
-Keyboard input was removed (2026-05-02); input is now mouse-based:
-
-| Action | Effect |
-|--------|--------|
-| Left-click & hold a button | Signal goes to 0 (active low); button drawn green |
-| Release left button | Signal returns to 1 |
-| Drag mouse out while held | Button auto-releases |
-| Click RESET | Also sets `restart_triggered` → simulation re-runs `reset()` |
-| `ESC` or `Q` / window close | Quit |
-
-Event loop details: 60 FPS target with adaptive `SDL_Delay`; **at most 1 event is processed per frame** — remaining events in the SDL queue are **drained and discarded** (counted as "dropped" in stats), NOT deferred to the next frame. This was a deliberate trade-off to keep the simulation thread fed on low-core machines, but it means rapid click-release sequences can lose the release event.
-
-### Simulation Timing
-
-**Full speed, no wall-clock pacing.** `wait_10ns()` is a no-op; the simulation thread runs as fast as the CPU allows and calls `std::this_thread::yield()` every 1024 iterations to avoid starving the render thread. (The earlier `RealTimeSync` wall-clock mechanism was removed on 2026-05-02 — see Change History.)
-
-Each iteration: two `tick()` calls (full clock cycles: clk high → eval → clk low → eval) + one `sample_pixel()`.
-
-### VGA Signal Tracking
-
-`sample_pixel()` detects **rising edges** of `h_sync` / `v_sync` (active-high sync as generated by the Verilog examples) and maintains `(coord_x, coord_y)`. Pixels are captured in the active region starting at `H_ACTIVE_START=144`, `V_ACTIVE_START=35`.
-
-### Reset Behavior
-
-`reset()` drives `reset=0` (active-low reset asserted) for 10 clock cycles, then releases to 1; also clears framebuffers, key states, and LED states.
-
-### Statistics Output
-
-Everything goes to **stderr**: per-second EventLoop report (FPS, events processed/dropped, max frame time), VSync counter every 60 frames, input event logs, and final stats on exit. Useful for debugging performance issues.
-
-## GUI Launcher Architecture (gui/)
-
-Single-screen Flutter app (`launcher_screen.dart`) using Provider. State lives in `LauncherState` (`lib/state/launcher_state.dart`).
-
-### Services
-
-| Service | Responsibility |
-|---------|----------------|
-| `DependencyChecker` | Checks Verilator/SDL2/make/g++; on Windows tries native first, then WSL |
-| `VerilogParser` | Scans a directory for `.v` files, parses ANSI-style module ports with regex |
-| `WorkspaceService` | Creates `<RTL>/sim/`, copies `assets/sim/` templates (LF-normalized), generates `DevelopmentBoard.v` |
-| `BoardGenerator` | Fills `assets/templates/development_board.v.tpl` (`{{module_name}}`, `{{connections}}`) |
-| `CompilerService` | Runs `run_simulation.sh` via bash (Windows: native verilator → otherwise WSL with `/mnt/<drive>/` paths); merges stdout/stderr into the log stream |
-| `PlatformHelper` | Platform detection, Windows↔WSL path conversion |
-
-### Signal Auto-Inference Rules
-
-Mapping is `board signal → module port`. First match wins; unmatched signals are left empty and can be set manually via dropdowns.
-
-| Board Signal | Candidate Port Names (in order) |
-|--------------|--------------------------------|
-| `clk` | `clk`, `sys_clk`, `clock`, `sys_clock` |
-| `reset` | `reset`, `sys_rst_n`, `rst_n`, `rst`, `sys_reset` |
-| `B2`–`B5` | `up`/`down`/`left`/`right`, `b2`–`b5`, `btn2`–`btn5` |
-| `h_sync` | `h_sync`, `hsync`, `hs` |
-| `v_sync` | `v_sync`, `vsync`, `vs` |
-| `rgb` | `rgb`, `vga_rgb`, `data` |
-| `led1`–`led5` | `led1`–`led5` |
-
-### Known Parser/Tooling Limitations
-
-- Directory scan is **non-recursive** — `.v` files in subdirectories are not found
-- ANSI-style ports only; modules with `#(parameter ...)` headers are not matched
-- Port list is split on commas — no support for multi-dimensional ports containing commas
-- `stopSimulation()` kills the bash process; on some platforms child processes (make/simulator) may survive briefly
-
-## Development Conventions
-
-### Verilog Coding Requirements
-
-1. **Timescale Directive**: ALL Verilog files MUST include at the beginning:
-   ```verilog
-   `timescale 1ns / 1ns
-   ```
-
-2. **No IP Cores**: The simulator does NOT support vendor IP cores (PLL, RAM blocks, etc.). Replace with your own implementations.
-
-3. **Clock Generation**: Since PLL IP is not supported, use simple clock dividers:
-   ```verilog
-   reg vga_clk;
-   always @(posedge sys_clk or negedge sys_rst_n) begin
-       if (!sys_rst_n)
-           vga_clk <= 0;
-       else
-           vga_clk <= ~vga_clk;  // Divides 50MHz to 25MHz
-   end
-   ```
-
-### Module Interface Standards
-
-Your top-level module should follow this interface pattern (these names are what the GUI auto-inference recognizes):
+v1 中 DevelopmentBoard.v 是手写/自动映射的桥接文件；**v2 中它就是 PCB 走线本身**：后端按 QSF 把"学生顶层端口 → 引脚 → 板卡外设"的连接关系生成 wrapper。固定端口（与 simulator.cpp 约定）：
 
 ```verilog
-module YourModule(
-    input wire sys_clk,      // 50MHz system clock
-    input wire sys_rst_n,    // Active-low reset
-    input wire up,           // Button input (active low)
-    input wire down,         // Button input (active low)
-    input wire left,         // Button input (active low)
-    input wire right,        // Button input (active low)
-    output wire hsync,       // VGA horizontal sync
-    output wire vsync,       // VGA vertical sync
-    output wire [15:0] rgb,  // RGB565 color output
-    output wire led1,        // LED outputs (active low)
-    output wire led2,
-    output wire led3,
-    output wire led4,
-    output wire led5
+module DevelopmentBoard(
+    input  wire        clk,                  // E1, 50MHz
+    input  wire        key_reset,            // SW1, M15, 按下=0
+    input  wire [3:0]  key,                  // SW2~SW5 = key[0]~key[3], 按下=0
+    output wire [3:0]  led,                  // LED2~LED5 = led[0]~led[3], 0=亮
+    output wire        vga_hs,               // C2
+    output wire        vga_vs,               // D1
+    output wire [15:0] vga_d                 // RGB565
 );
 ```
 
-### DevelopmentBoard.v Modification
+学生不接触此文件。wrapper 由模板 `sim/DevelopmentBoard.v.tpl` + QSF 映射生成。
 
-CLI users edit `DevelopmentBoard.v` to instantiate their module:
+### 构建管线（后端 build_service）
 
-```verilog
-YourModule YourModule_inst(
-    .sys_clk(clk),
-    .sys_rst_n(reset),
-    .hsync(h_sync),
-    .vsync(v_sync),
-    .rgb(rgb),
-    .up(B2),
-    .down(B3),
-    .left(B4),
-    .right(B5),
-    .led1(led1),
-    .led2(led2),
-    .led3(led3),
-    .led4(led4),
-    .led5(led5)
-);
+| 步骤（界面词汇） | 底层实现 | 产出 |
+|-----------------|---------|------|
+| Analysis & Synthesis | `yosys -p 'read_verilog ...; hierarchy -top <top>; proc; check; stat; ltp'` | Quartus 风格 Flow Summary（LE/寄存器数取自 stat）；latch 推断等真实警告进 Messages |
+| Fitter (Place & Route) | QSF 引脚合法性校验（对照 board JSON；clk 不在 E1 则警告非专用时钟脚；vga_d 总线必须 16 位全分配；输出端口未分配→warn）；时序估算（见下） | 引脚分配报告 + TimeQuest 风格时序摘要 |
+| Assembler | `verilator -O3 --Wno-fatal --cc --top-module DevelopmentBoard` + **后端直接拼 g++**（无 make）：`g++ -O3 simulator.cpp obj_dir/VDevelopmentBoard*.cpp <verilator_root>/include/verilated.cpp -I...` | `output_files/<top>_r<N>.sof`（= 仿真可执行文件 + JSON 元数据；每次编译递增修订号 `top_r3.sof`，绕开 Windows 运行中 exe 锁定） |
+
+**时序估算**（Fitter 内）：`yosys read_verilog ...; synth -top <top>; ltp`（门级映射后测最长路径，取所有模块报告的最大值），Fmax ≈ 1000/(0.2×级数+1.5) MHz，Slack = 20ns − 估算周期。**与真实 Quartus 一致：时序不收敛只是 Critical Warning（Messages 红色提醒），不阻断后续 Assembler/Programmer**——仿真器是功能模型，时序问题不影响虚拟板运行。该估算是教学参考值，已在两个 Example 上校准（E1≈77MHz，E2≈56MHz）。
+| Assembler | `verilator -O3 --Wno-fatal --cc --top-module DevelopmentBoard` + **后端直接拼 g++**（无 make）：`g++ -O3 simulator.cpp obj_dir/VDevelopmentBoard*.cpp <verilator_root>/include/verilated.cpp -I...` | `output_files/<top>.sof`（= 仿真可执行文件 + JSON 元数据；每次编译递增修订号 `top_r3.sof`，绕开 Windows 运行中 exe 锁定） |
+| Programmer | 校验板已上电 → 进度仪式（~2s）→ spawn `.sof` 进程（后端直接托管，不经 shell）→ 等 READY 握手 → CONF_DONE | 板子运行新程序；旧进程先杀后起 |
+
+Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILATOR_ROOT/include`（apt 安装为 `/usr/share/verilator/include`）。兼容 Verilator ≥ 4.038（Ubuntu 22.04 源版本）。
+
+### 仿真协议（simulator.cpp ↔ backend，二进制管道）
+
+无头仿真器：仿真主循环 + stdin 读取线程。日志全走 stderr，**stdout 只传二进制帧**。
+
+下行（sim → backend，stdout）：
+
+```
+启动后: stderr 打印 "SIM_READY\n"（握手）
+帧: [u32 magic=0x31474156 'VGA1'][u32 frame_no][u8 led_bits][u8 flags][u16 reserved]
+    [payload 640*480*2 字节 RGB565 小端, y-major]
+    — 每个 v_sync 上升沿发一帧；led_bits bit i = led[i] 亮（已解 active-low）
 ```
 
-**DO NOT modify** the `DevelopmentBoard` module header (input/output declarations). GUI users never touch this file — it is generated from `gui/assets/templates/development_board.v.tpl`.
+上行（backend → sim，stdin）：
 
-## Input/Output Mapping
-
-### Virtual Buttons
-
-The simulator window displays 5 clickable square buttons at the bottom:
-
-| Button | Signal | Function | Active Level |
-|--------|--------|----------|--------------|
-| **RESET** | reset | System reset | 0 (held) |
-| **B2** | B2 | Custom button 2 | 0 (held) |
-| **B3** | B3 | Custom button 3 | 0 (held) |
-| **B4** | B4 | Custom button 4 | 0 (held) |
-| **B5** | B5 | Custom button 5 | 0 (held) |
-
-> Held button = signal 0. Released = 1. Dragging the mouse off the button while held auto-releases it.
-
-### VGA Specifications
-
-| Parameter | Value |
-|-----------|-------|
-| Resolution | 640x480 |
-| Refresh Rate | 60Hz |
-| H_SYNC | 96 cycles |
-| H_BACK | 40 cycles |
-| H_LEFT | 8 cycles |
-| H_VALID | 640 cycles |
-| H_RIGHT | 8 cycles |
-| H_FRONT | 8 cycles |
-| H_TOTAL | 800 cycles |
-| V_SYNC | 2 lines |
-| V_BACK | 25 lines |
-| V_TOP | 8 lines |
-| V_VALID | 480 lines |
-| V_BOTTOM | 8 lines |
-| V_FRONT | 2 lines |
-| V_TOTAL | 525 lines |
-
-In `simulator.cpp` these appear as `LEFT_PORCH=48` (H_BACK+H_LEFT), `RIGHT_PORCH=16` (H_RIGHT+H_FRONT), `TOP_PORCH=33` (V_BACK+V_TOP), `BOTTOM_PORCH=10` (V_BOTTOM+V_FRONT), with active region starting at `(144, 35)`. Sync pulses are detected on their **rising edge** (active high).
-
-### RGB565 Color Format
-
-| Bit Range | Color Component |
-|-----------|-----------------|
-| [15:11]   | Red (5 bits)    |
-| [10:5]    | Green (6 bits)  |
-| [4:0]     | Blue (5 bits)   |
-
-Example color constants:
-```verilog
-parameter RED    = 16'hF800;
-parameter GREEN  = 16'h07E0;
-parameter BLUE   = 16'h001F;
-parameter WHITE  = 16'hFFFF;
-parameter BLACK  = 16'h0000;
+```
+'B' [u8 button_id 0..4 = SW1..SW5] [u8 state: 0=按下 1=松开]
+'I' [u8 0|1]   Ideal Input 开关（1=无抖动）
+'Q'            退出
 ```
 
-## Testing Instructions
+时序 pacing：仿真按**墙钟 60Hz**  pacing（每发一帧 sleep 到下一个 16.67ms 边界；仿真快则等、慢则尽速）——真实板子就是实时的，且天然限制带宽。
 
-### Example 1: Color Bar Test
+### 后端 ↔ 前端
 
-```bash
-cd Example/Example_1_ColorBar/sim
-chmod +x run_simulation.sh
-./run_simulation.sh ../RTL
-```
+- `GET /`（EDA 工具页）、`GET /board.html`（开发板页）、静态资源
+- `POST /api/...`：工程选择、QSF 读写、compile 各步骤、program、power、input（按键）、ideal 开关
+- `GET /ws`：WebSocket。下行：VGA 二进制帧（每客户端只发最新帧，积压即丢）、`{type:"board",...}` 状态、`{type:"log",...}` 编译日志、`{type:"step",...}` 流程状态
+- 所有 `/api/*` 与 `/ws` 需 `X-Board-Token` 头（或 ws query 参数）；只绑 127.0.0.1；校验 Host 头防 DNS rebinding；看门狗：120s 无活动自动退出
+- 板卡状态机：`OFF → ON(unconfigured) → CONFIGURED(running)`；power off = 杀进程 + 清配置；program = 杀旧进程 → 起新进程
 
-Expected: Vertical color bars displayed on the VGA screen.
+## 平台与工具链
 
-### Example 2: Ball Movement Test
+| 平台 | 工具链 | 说明 |
+|------|--------|------|
+| Linux | `apt install verilator g++ yosys`（锁版本见 config.py） | 后端与工具同机同 OS |
+| macOS | `brew install verilator yosys`（Xcode CLT 提供 g++） | 同上 |
+| Windows | MSYS2：`pacman -S mingw-w64-x86_64-verilator mingw-w64-x86_64-gcc yosys` | 同上 |
 
-```bash
-cd Example/Example_2_BallMove/sim
-chmod +x run_simulation.sh
-./run_simulation.sh ../RTL
-```
+**无 SDL2、无 make、无 WSL 依赖、无显示环境配置**。开发主机可用 WSL 跑后端（Windows 浏览器经 localhost 转发访问）。
 
-Expected: Blue ball on purple background. **Click and hold** the B2/B3/B4/B5 virtual buttons at the bottom of the window to move the ball. Corresponding LEDs light up while buttons are held.
-
-## Troubleshooting
-
-| Error | Solution |
-|-------|----------|
-| `verilator: command not found` | **Ubuntu:** `sudo apt install verilator`<br>**macOS:** `brew install verilator`<br>**MSYS2:** `pacman -S mingw-w64-x86_64-verilator` |
-| `SDL.h: No such file` | **Ubuntu:** `sudo apt install libsdl2-dev`<br>**macOS:** `brew install sdl2`<br>**MSYS2:** `pacman -S mingw-w64-x86_64-SDL2` |
-| `obj_dir/VDevelopmentBoard.mk: No such file` | Verilation failed. Check Verilog syntax and include paths |
-| `project path contains spaces` | GNU Make limitation — move the project to a path without spaces |
-| Black screen / no display | Check VGA timing parameters match the specification; check sync polarity (rising-edge detection) |
-| Buttons not responding | Button inputs are active-low (0 while held); click-and-hold, not single-click |
-| Button appears stuck | Rapid click-release may drop the release event (1 event/frame limit) — click again |
-| WSL: window does not open | `run_simulation.sh` auto-sets `DISPLAY=:0`; verify WSLg or an X server is running |
-| Windows GUI: `bash` not found | Install MSYS2 and add to PATH, or install WSL2 (GUI auto-falls-back) |
-| Windows GUI: build fails on `D:`/`E:` drive | Use `gui/test_gui.ps1` (cross-drive Flutter build limitation) |
-| `error messaging the mach port for IMKCFRunLoopWakeUpReliable` | **macOS + PinPlanner only:** Harmless Input Method Kit warning. Ignore |
-
-## Generated Artifacts
-
-The build process creates an `obj_dir/` directory containing:
-- `VDevelopmentBoard` - Compiled simulation executable
-- `VDevelopmentBoard.cpp` / `.h` - Verilator-generated model
-- `verilated.o` - Verilator runtime object files
-
-GUI runs additionally create `<RTL>/sim/sim.log` (appended per run).
-
-**Note**: `obj_dir/` is gitignored and should not be committed.
-
-## Security Considerations
-
-- The simulation runs with user-level permissions
-- No network connectivity in the simulation
-- Input is limited to mouse/keyboard events captured by SDL2
-- Generated C++ code from Verilator should be reviewed for synthesis before FPGA deployment
-
-## Helper Tools
-
-### PinPlanner (Legacy)
-
-`sim/PinPlanner.py` is the predecessor of the GUI Launcher: a tkinter tool that parses a Verilog module and generates `DevelopmentBoard.v`. Kept as a CLI-environment backup; **new work should target the Flutter GUI**, and PinPlanner bugs are only fixed when they block CLI-only users.
-
-**Usage:** `python3 sim/PinPlanner.py`
-
-**Capabilities:** ANSI port parsing (input/output/inout, multi-bit, comments tolerated), visual signal mapping, allows partial mapping (≥1 signal), generates instance name as `{module_name}_inst`.
-
-> macOS note: `IMKCFRunLoopWakeUpReliable` warnings from file dialogs are harmless.
-
----
+学生侧总安装量：Python 包（绿色软件）+ 各平台包管理器两三条命令。
 
 ## 开发工作流程规则
 
 ### 修改方案确认规则（⚠️ 重要）
 
-**规则：所有修改，先给出详细方案，用户确定方案后再执行！**
-
-- **必须先提供方案**：在执行任何代码修改之前，必须向用户详细说明：
-  - 修改的具体内容（改哪些文件、改哪里）
-  - 修改的技术方案和理由
-  - 可能的影响和风险
-  - 预期的结果和验证方式
-
-- **等待用户确认**：只有在用户明确回复 "确认"、"同意"、"执行" 或类似指令后，才能开始执行修改
-
-- **禁止擅自执行**：严禁在用户未确认的情况下直接修改文件，除非是非常明确的、用户已同意的修改
+**所有修改，先给出详细方案，用户确定方案后再执行。** 必须先说明：改哪些文件、技术方案和理由、影响和风险、预期结果和验证方式。只有用户明确回复"确认/同意/执行"后才能动手。
 
 ### Testing File Organization
 
-**重要规则：所有测试用的文件必须放在单独的测试目录中。**
-
-- 测试脚本、测试数据、临时文件必须放在 `tests/` 或相关模块的测试目录中
-- 禁止在生产代码目录（如 `sim/`、`Example/`）中直接创建测试文件
-- 这样可以确保生产环境干净，避免用户混淆哪些是核心文件
+所有测试脚本/测试数据/临时文件必须放在 `tests/` 目录中，禁止在生产代码目录创建测试文件。
 
 ### Git 提交规范
 
-**规则：仅在用户明确要求时执行 `git commit`**
+仅在用户明确要求时执行 `git commit`。提交前先 `git status` / `git diff` 展示变更，确认后再提交。
 
-- 完成修改后**不要**自动执行 `git commit`
-- 等待用户明确说 "commit" 或 "提交" 后再执行
-- 在提交前，先使用 `git status` 或 `git diff` 向用户展示变更内容
-- 确认用户满意后再执行提交
+### Main Branch AGENTS.md 管理规则
 
-### ⚠️ Main Branch AGENTS.md 管理规则（重要）
-
-**规则：main branch 禁止包含 AGENTS.md 文件**
-
-- **未来所有合并到 main branch 的操作都必须排除 AGENTS.md**
-- main branch 中不应存在 AGENTS.md 文件
-- 该规则适用于所有合并方式：Pull Request、merge、cherry-pick 等
-
-**验证方法：**
-
-```bash
-git ls-tree HEAD | grep AGENTS.md
-# 或
-ls AGENTS.md 2>/dev/null && echo "EXISTS" || echo "NOT FOUND"
-```
-
-**操作建议：**
-
-```bash
-# 方法 A: 合并后删除并 amend
-git merge <feature-branch>
-git rm AGENTS.md
-git commit --amend
-
-# 方法 B: 使用 --no-commit 手动控制
-git merge <feature-branch> --no-commit --no-ff
-git rm AGENTS.md
-git commit
-```
+**main branch 禁止包含 AGENTS.md**。所有合并到 main 的操作都必须排除 AGENTS.md（merge 后 `git rm AGENTS.md` 再 amend，或 `--no-commit` 手动控制）。验证：`git ls-tree HEAD | grep AGENTS.md`。
 
 ### AGENTS.md 更新规则
 
-**规则：仅在用户明确要求时更新 AGENTS.md**
+仅在用户明确要求时更新 AGENTS.md。
 
-- 完成修改后**不要**自动更新 `AGENTS.md`
-- 等待用户明确说 "更新 AGENTS.md" 或类似指令后再执行
+### 文件唯一性
 
-### simulator.cpp / run_simulation.sh 同步规范
+`sim/simulator.cpp` 与 `sim/DevelopmentBoard.v.tpl` 全仓库**各只有一份**（v1 的四副本同步规范已随 Example 迁移废除）。Example 工程只含学生视角文件（`.v` + `.qsf`），不含仿真模板。
 
-**规则：修改核心仿真文件后，必须同步所有副本。**
+## 实施分期
 
-`simulator.cpp` 和 `run_simulation.sh` 存在 **4 份副本**，必须保持一致：
+| 阶段 | 内容 | 验收标准 |
+|------|------|---------|
+| 一：地基 | 后端骨架 + 无头仿真器 + 最简网页；Example 跑通 | 浏览器 60fps，按键不丢 |
+| 二：开发板页 | SVG 板面、电源状态机、断电丢配置、新引脚语义（4 LED / SW1~5） | 断电全灭、No Signal 正确 |
+| 三：EDA 工具页 | Tasks 流程、QSF + Pin Planner、Messages 按钮、Programmer、重烧自动更新 | 完整流程；引脚写错会失败；改代码重烧不重启 |
+| 四：打磨 | 抖动注入、Example 迁移、手册与 README 重写 | 教学细节完整 |
 
-| 位置 | 用途 |
-|------|------|
-| `sim/` | CLI 主版本（源头） |
-| `Example/Example_1_ColorBar/sim/` | Example 1 测试 |
-| `Example/Example_2_BallMove/sim/` | Example 2 测试 |
-| `gui/assets/sim/` | GUI 分发给用户项目的模板 |
+## Change History
 
-**同步命令：**
-```bash
-cp sim/simulator.cpp sim/run_simulation.sh Example/Example_1_ColorBar/sim/
-cp sim/simulator.cpp sim/run_simulation.sh Example/Example_2_BallMove/sim/
-cp sim/simulator.cpp sim/run_simulation.sh gui/assets/sim/
-```
-
-**验证一致性：**
-```bash
-diff sim/simulator.cpp Example/Example_1_ColorBar/sim/simulator.cpp
-diff sim/simulator.cpp Example/Example_2_BallMove/sim/simulator.cpp
-diff sim/simulator.cpp gui/assets/sim/simulator.cpp
-diff sim/run_simulation.sh gui/assets/sim/run_simulation.sh
-```
-
-**测试前应先用上述 diff 检查文件一致**，不一致时先同步再测试。
-
-**原因：**
-- Example 目录是用户学习的主要入口
-- `gui/assets/sim/` 会被复制到每个用户的项目中，过时模板会影响所有 GUI 用户
-- 确保所有入口使用统一、最新的模拟器代码
-
-## Change History (Summary)
-
-完整历史见 git log。关键节点：
+完整历史见 git log。
 
 | 日期 | 变更 |
 |------|------|
-| 2026-02-17 | GLUT 时代的线程安全修复（原子变量初始化、双缓冲帧缓冲、跨平台退出清理） |
-| 2026-02-18 | **OpenGL/GLUT → SDL2 软件渲染迁移**：每帧 30 万+ glRectf 调用 → 单次 SDL_BlitScaled，渲染 CPU 占用大幅下降；窗口关闭行为跨平台统一 |
-| 2026-02-18 | 加入 RealTimeSync 墙钟同步，随后为虚拟机性能将仿真时钟 12.5MHz → 3.125MHz |
-| 2026-05-02 | **移除 RealTimeSync**（`wait_10ns()` 变为空操作，全速仿真 + 周期性 yield） |
-| 2026-05-02 | **键盘输入改为鼠标虚拟按钮**（RESET、B2–B5），窗口扩展为 VGA + LED + 按钮三区布局 |
-| 2026-05-02 | 新增 Flutter GUI Launcher（`gui/`）；PinPlanner 降为 legacy 备用工具 |
-| 2026-05-04~05 | 界面文本英文化；verilator 命令移除 `-Wall` |
-| 2026-06-03 | Windows 支持完善（MSYS2 原生 + WSL2 回退、路径空格检查、WSL 显示自动配置） |
+| 2026-02-17 ~ 2026-06-03 | v1：GLUT→SDL2 迁移、鼠标虚拟按钮、Flutter GUI Launcher、Windows 支持（详见 git log 与 v1 文档） |
+| 2026-09-29 | **v2 重构启动**（分支 `v2-web-board`）：废弃 Flutter GUI + SDL2 窗口，改为纯 Web（Python 标准库后端 + 浏览器渲染）；无头仿真器经管道输出帧；仿 Quartus 流程（QSF 约束/Synthesis/Fitter/Assembler/Programmer）；开发板实物化界面（电源开关、断电丢配置、CONF_DONE、No Signal）；引脚表照抄野火 EP4CE10_Pro 原理图；仿真按墙钟 60Hz pacing；按键抖动注入 |
 
 ## License
 
@@ -583,6 +266,7 @@ MIT License - Copyright (c) 2025 Ze Wang
 ## References
 
 - [Verilator Documentation](https://www.veripool.org/verilator/)
+- [Yosys Documentation](https://yosyshq.readthedocs.io/)
 - [VGA Timing Specification](http://www.tinyvga.com/vga-timing/640x480@60Hz)
-- [SDL2 Documentation](https://wiki.libsdl.org/)
-- [Flutter Documentation](https://docs.flutter.dev/)
+- [RFC 6455 WebSocket Protocol](https://datatracker.ietf.org/doc/html/rfc6455)
+- 野火 EP4CE10_Pro 原理图（`SchematicDiagram/Doc-2-Schematic Diagram of Development Board.pdf`）

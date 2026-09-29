@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Development Board — Simple VGA Simulator</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="page-board">
+<div id="fatal" hidden></div>
+<script>
+  window.onerror = function (m, s, l) {
+    var d = document.getElementById('fatal');
+    d.hidden = false;
+    d.textContent = 'JS error: ' + m + (s ? ' @ ' + s.split('/').pop() + ':' + l : '');
+  };
+  window.onunhandledrejection = function (ev) {
+    var d = document.getElementById('fatal');
+    d.hidden = false;
+    d.textContent = 'JS error (async): ' + (ev.reason && (ev.reason.message || ev.reason) || 'unknown');
+  };
+</script>
+
+<header class="pagetabs dark">
+  <span class="brand">Simple VGA Simulator <em>v2</em></span>
+  <nav class="tabs">
+    <a class="tab" id="tabIde">EDA Tool</a>
+    <a class="tab active" id="tabBoard">Development Board</a>
+  </nav>
+  <span class="conn" id="connState"></span>
+</header>
+
+<!-- lab bench scene: PCB + separate VGA monitor, all data-driven from board JSON -->
+<div class="desk">
+  <svg id="scene" viewBox="0 0 1780 1000" preserveAspectRatio="xMidYMid meet" role="img"
+       aria-label="Virtual development board and VGA monitor"></svg>
+</div>
+
+<div class="board-controls">
+  <label class="ctl" title="Disable simulated button bounce">
+    <input type="checkbox" id="idealSw"> Ideal Input
+  </label>
+  <span id="boardHint" class="hint"></span>
+  <label class="ctl" id="mockCtl" hidden title="Mock-only dev aid">
+    <input type="checkbox" id="mockPause"> Pause frames (mock)
+  </label>
+</div>
+
+<script type="module" src="js/board.js"></script>
+</body>
+</html>

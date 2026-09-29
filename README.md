@@ -1,263 +1,54 @@
-# Simple VGA Simulator
+# Simple VGA Simulator v2
 
-A Verilator-based FPGA VGA simulation environment for testing VGA controller designs without physical hardware.
+**EIE330 · 虚拟 FPGA 开发板实验台 / Virtual FPGA Development Board Lab Bench**
 
-## Features
+在浏览器里完整走一遍 FPGA 开发流程：写 Verilog → 写 QSF 引脚约束 → Analysis & Synthesis → Fitter (Place & Route) → Assembler → Programmer（USB-Blaster 烧录）→ 上电 → 按按键看现象。不需要真实的开发板，也不需要虚拟机。
 
-- 🖥️ **Virtual VGA Display** - 640×480 @ 60Hz, RGB565 16-bit color
-- 🎮 **5 Virtual Buttons** - Mouse-clickable on-screen buttons (RESET, B2–B5)
-- 💡 **5 Virtual LEDs** - Visual output indicators
-- 🚀 **GUI Launcher** - One-click simulation with automatic compilation and signal mapping
-- ⚡ **Real-time Simulation** - Based on Verilator + SDL2 with interactive debugging
+Run the full FPGA workflow in your browser — Verilog → QSF → synthesis → place & route → programming files → USB-Blaster programming → power on → press buttons. No physical board, no virtual machine.
 
-## Specifications
+![虚拟开发板运行中 / Development board running](SchematicDiagram/v2_board_running.png)
 
-| Parameter | Value |
-|-----------|-------|
-| Resolution | 640 × 480 |
-| Refresh Rate | 60 Hz |
-| Color Format | RGB565 (16-bit) |
-| System Clock | 50 MHz |
+## v2 是什么 / What v2 Is
 
-## Platform Support
+v2 是两个独立的浏览器页面：
 
-| Platform | Version | Tested Environment |
-|----------|---------|-------------------|
-| Linux | Ubuntu 22.04+ | GCC + Verilator |
-| macOS | 15.0+ (Sequoia) | Apple Silicon, Clang |
-| Windows | 10/11 | WSL2 / Native (MSYS2) |
+| 页面 / Page | 是什么 / What it is |
+|-------------|---------------------|
+| **EDA Tool** | 仿 Quartus Prime 的开发工具：工程、Tasks 编译流程（Analysis & Synthesis / Fitter / Assembler）、Pin Planner、时序报告、Programmer |
+| **Development Board** | 仿真实物布局的虚拟开发板：Cyclone IV E EP4CE10F17C8N、Y7 50MHz 晶振、SW1~SW5 按键、LED2~LED5 蓝色 LED、VGA 外接显示器、电源开关 |
 
-## Prerequisites
+面向开发者 / For developers：Python 标准库后端（零第三方依赖）+ 无构建原生前端，编译与仿真由 Verilator + Yosys 工具链驱动；无 SDL2、无 make、无虚拟机。
 
-### 1. Simulation Environment (Required)
+## 你需要装什么 / The Only Thing You Install
 
-Regardless of using GUI or command line, the following tools must be installed:
+| 平台 / Platform | 安装命令 / Install command |
+|-----------------|---------------------------|
+| Ubuntu / Debian | `sudo apt install verilator yosys g++` |
+| macOS | `brew install verilator yosys`（编译器来自 Xcode CLT：`xcode-select --install`） |
+| Windows | MSYS2 中 `pacman -S mingw-w64-x86_64-verilator mingw-w64-x86_64-gcc mingw-w64-x86_64-yosys`，并把 `C:\msys64\mingw64\bin`（按实际安装路径调整）加入 PATH |
 
-| Tool | Ubuntu / Debian | macOS | Windows (WSL2) | Windows (MSYS2) |
-|------|-----------------|-------|----------------|-----------------|
-| **Verilator** | `sudo apt install verilator` | `brew install verilator` | `sudo apt install verilator` | `pacman -S mingw-w64-x86_64-verilator` |
-| **SDL2** | `sudo apt install libsdl2-dev` | `brew install sdl2` | `sudo apt install libsdl2-dev` | `pacman -S mingw-w64-x86_64-SDL2` |
-| **make + g++** | `sudo apt install build-essential` | `xcode-select --install` | `sudo apt install build-essential` | `pacman -S make mingw-w64-x86_64-gcc` |
+版本要求 / Required versions：Verilator ≥ 4.0，Yosys ≥ 0.9，g++ ≥ 7。
+验证 / Verify：`verilator --version`、`yosys --version`、`g++ --version`。
 
-**Verify installation:**
-```bash
-verilator --version      # Should show 4.0+
-sdl2-config --version    # Should show 2.0+
-make --version           # Should show 3.81+
-g++ --version            # Should show 7.0+
-```
+**不再需要** / No longer needed：虚拟机、WSL、SDL2、make、Flutter、Qt。
 
-#### Ubuntu / Debian (Native or WSL2)
+## 三步上手 / Quick Start
 
-```bash
-# Update package lists
-sudo apt-get update
+1. **获取 / Get it** — GitHub Releases 下载对应平台的压缩包并解压（或源码运行 `python main.py`，Python ≥ 3.9，零第三方依赖）
+2. **启动 / Launch** — 双击启动，浏览器自动打开 EDA Tool 页
+3. **跑通示例 / Run an example** — Open Project… 选择 `Example/Example_1_ColorBar` → 双击 Tasks 里的 Compile Design ▶ → 切到 Development Board 页拨 POWER 开关上电 → 回 EDA Tool 页打开 Programmer 点 Start → 回到板子页看彩条
 
-# Install all required tools at once
-sudo apt-get install -y build-essential verilator libsdl2-dev make
-```
+## 示例工程 / Example Projects
 
-> **Note for Ubuntu 22.04:** If you encounter dependency errors when installing `libsdl2-dev` (e.g., `libpulse-dev` or `libudev-dev` version mismatches), add the updates repository:
-> ```bash
-> sudo tee -a /etc/apt/sources.list << 'EOF'
-> deb http://archive.ubuntu.com/ubuntu jammy-updates main universe
-> deb http://security.ubuntu.com/ubuntu jammy-security main universe
-> EOF
-> sudo apt update
-> sudo apt install libsdl2-dev
-> ```
+| 示例 / Example | 内容 / Content |
+|----------------|----------------|
+| `Example/Example_1_ColorBar` | 640×480 彩色条纹，无按键交互，用来熟悉完整流程 |
+| `Example/Example_2_BallMove` | 紫色背景上的蓝色小球；按 SW2~SW5（KEY1~KEY4）移动小球，按住时对应 LED2~LED5 点亮 |
 
-#### macOS
+## 文档 / Documentation
 
-1. **Install Xcode Command Line Tools** (includes GCC compiler)
-   ```bash
-   xcode-select --install
-   ```
-
-2. **Install Homebrew** (if not already installed)  
-   Visit https://brew.sh and follow the official installation instructions.
-
-3. **Install tools via Homebrew**
-   ```bash
-   brew install verilator sdl2
-   ```
-
-#### Windows (WSL2) — Recommended for beginners
-
-1. **Install WSL2 + Ubuntu**
-   ```powershell
-   # Run in PowerShell as Administrator
-   wsl --install -d Ubuntu-22.04
-   ```
-   Restart your computer and complete the Ubuntu setup.
-
-2. **Install simulation tools inside WSL2**
-   ```bash
-   sudo apt update
-   sudo apt install -y build-essential verilator libsdl2-dev make
-   ```
-
-3. **Configure WSL display environment (for GUI)**  
-   The `run_simulation.sh` script automatically configures `DISPLAY` and `XDG_RUNTIME_DIR`. No manual setup needed.
-
-#### Windows (MSYS2) — Native Windows without WSL
-
-1. **Install MSYS2**  
-   Download and install from https://www.msys2.org/
-
-2. **Open MSYS2 MinGW 64-bit terminal** and run:
-   ```bash
-   pacman -Syu
-   pacman -S mingw-w64-x86_64-verilator \
-             mingw-w64-x86_64-SDL2 \
-             mingw-w64-x86_64-gcc \
-             make
-   ```
-
-3. **Add MSYS2 to Windows PATH**
-   - `C:	ools/msys64/mingw64in`
-   - `C:	ools/msys64//usrin`
-   *(Adjust path based on your MSYS2 installation directory)*
-
-### 2. GUI Launcher (Optional)
-
-- **Option A: Download Pre-built Package (Recommended)**  
-  Download the corresponding platform archive from [GitHub Releases](../../releases). Extract and run directly — no Flutter SDK required.
-
-- **Option B: Build GUI from Source**  
-  Install [Flutter SDK](https://docs.flutter.dev/get-started/install) (Stable channel, 3.0+). Then:
-  ```bash
-  cd gui
-  flutter pub get
-  flutter run -d windows   # or macos / linux
-  ```
-
-  **Windows (Project not on system drive):**  
-  If the project resides on a non-system drive (e.g., `D:`, `E:`, or a VBox shared folder), Flutter cannot build across drive letters. Use the provided PowerShell script:
-  ```powershell
-  cd gui
-  powershell -ExecutionPolicy Bypass -File test_gui.ps1
-  ```
-  This script automatically:
-  1. Creates a proxy project in `C:\Windows\Temp\vga_gui_test`
-  2. Links `lib/` and `assets/` via Junction to the source on `H:`
-  3. Runs `flutter create --platforms=windows`
-  4. Runs `flutter build windows`
-  5. Launches the built executable
-
-  > Requires **Windows Developer Mode** enabled: Settings → Privacy & Security → Developer Options → Developer Mode → On.
-
-
-## Quick Start
-
-### Option 1: GUI Launcher (Recommended)
-
-The easiest way to run simulations without touching the command line.
-
-**Step 1:** Download the pre-built package
-
-Visit [GitHub Releases](../../releases) and download `vga-launcher-<platform>.zip` / `.tar.gz` for your system.
-
-**Step 2:** Extract and run
-
-| Platform | Run Command |
-|----------|-------------|
-| Windows | Double-click `vga_launcher.exe` |
-| macOS | Right-click `VGA Launcher.app` → Open |
-| Linux | `./vga_launcher` |
-
-**Step 3:** Use the GUI
-
-1. **Select Project Directory** — Choose the folder containing your `.v` files
-2. **Select Top Module** — Pick the top-level module from the dropdown
-3. **Signal Mapping** — Automatically inferred; adjust manually if needed
-4. **🚀 Run Simulation** — Click to compile and launch the VGA window
-
-> The GUI automatically creates a `sim/` folder inside your project, generates `DevelopmentBoard.v`, and handles the entire compilation process transparently.
-
----
-
-### Option 2: Command Line (Advanced)
-
-For users who prefer terminal or need CI/CD integration.
-
-**Run Example:**
-```bash
-cd Example/Example_1_ColorBar/sim
-chmod +x run_simulation.sh
-./run_simulation.sh ../RTL
-```
-
-**Use with Your Own Project:**
-
-Organize your files as:
-```
-your_project/
-├── RTL/
-│   └── your_module.v        # Your Verilog files
-└── sim/                       # Auto-created by GUI, or copy manually
-    ├── DevelopmentBoard.v
-    ├── simulator.cpp
-    └── run_simulation.sh
-```
-
-Run:
-```bash
-# If RTL is in parent directory
-./run_simulation.sh ../RTL
-
-# If RTL is in current directory
-./run_simulation.sh
-```
-
-## Project Structure
-
-```
-Simple-VGA-Simulator/
-├── gui/                    # Flutter GUI Launcher (recommended)
-│   ├── lib/                # Dart source code
-│   ├── assets/             # Templates (simulator.cpp, run_simulation.sh)
-│   └── pubspec.yaml
-├── sim/                    # Core simulation files (CLI)
-│   ├── PinPlanner.py       # Legacy GUI tool (CLI backup)
-│   ├── DevelopmentBoard.v  # Top-level wrapper template
-│   ├── simulator.cpp       # C++ simulation main
-│   └── run_simulation.sh   # Build & run script
-├── Example/                # Example projects
-│   ├── Example_1_ColorBar/ # Static color bar demo
-│   └── Example_2_BallMove/ # Interactive ball movement
-├── SchematicDiagram/       # Documentation diagrams
-└── Manual for EIE330 Students.md  # Detailed student manual
-```
-
-## GUI vs CLI
-
-| | GUI Launcher | Command Line |
-|---|--------------|--------------|
-| **Difficulty** | ⭐ Zero-config | ⭐⭐⭐ Manual setup |
-| **Signal Mapping** | Visual dropdowns | Edit `DevelopmentBoard.v` manually |
-| **Compilation** | One-click, transparent | Run `./run_simulation.sh` |
-| **Best For** | Students, beginners | CI/CD, advanced users |
-| **Requirements** | Simulation environment only | Simulation environment + terminal |
-
-## Button Mapping
-
-The simulator window displays 5 clickable square buttons below the LED area:
-
-| Button | Signal | Function | Active Level |
-|--------|--------|----------|--------------|
-| **RESET** | reset | System reset | Low (pressed = 0) |
-| **B2** | B2 | Custom button 2 | Low |
-| **B3** | B3 | Custom button 3 | Low |
-| **B4** | B4 | Custom button 4 | Low |
-| **B5** | B5 | Custom button 5 | Low |
-
-> Click and hold a button to activate (signal = 0). Release to deactivate (signal = 1). Dragging the mouse outside the button while held auto-releases it.
+- **[学生手册（中英双语）](Manual%20for%20EIE330%20Students.md)** — 完整安装、开发板说明、QSF 参考、示例与故障排除
 
 ## License
 
-[MIT License](LICENSE) © 2025 Ze Wang
-
-## Student Manual Documentation
-
-- [Detailed Student Manual](Manual%20for%20EIE330%20Students.md) - Complete tutorial for EIE330 students
+[MIT](LICENSE) © 2025 Ze Wang

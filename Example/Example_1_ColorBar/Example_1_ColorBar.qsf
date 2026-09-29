@@ -1,0 +1,35 @@
+# ============================================================
+# Example_1_ColorBar.qsf
+# Device : Cyclone IV E EP4CE10F17C8 (EP4CE10_Pro Board)
+# Top    : ColorBar
+# ============================================================
+set_global_assignment -name TOP_LEVEL_ENTITY ColorBar
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+
+# 50MHz oscillator (Y7)
+set_location_assignment PIN_E1 -to sys_clk
+create_clock -period 20.000 [get_ports sys_clk]
+
+# SW1 (RESET) - active low
+set_location_assignment PIN_M15 -to sys_rst_n
+
+# VGA connector
+set_location_assignment PIN_C2 -to hsync
+set_location_assignment PIN_D1 -to vsync
+set_location_assignment PIN_B4 -to rgb[0]
+set_location_assignment PIN_A2 -to rgb[1]
+set_location_assignment PIN_B5 -to rgb[2]
+set_location_assignment PIN_A6 -to rgb[3]
+set_location_assignment PIN_B6 -to rgb[4]
+set_location_assignment PIN_F6 -to rgb[5]
+set_location_assignment PIN_F7 -to rgb[6]
+set_location_assignment PIN_A7 -to rgb[7]
+set_location_assignment PIN_B7 -to rgb[8]
+set_location_assignment PIN_E8 -to rgb[9]
+set_location_assignment PIN_F8 -to rgb[10]
+set_location_assignment PIN_A8 -to rgb[11]
+set_location_assignment PIN_B8 -to rgb[12]
+set_location_assignment PIN_E7 -to rgb[13]
+set_location_assignment PIN_E6 -to rgb[14]
+set_location_assignment PIN_A5 -to rgb[15]

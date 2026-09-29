@@ -1,0 +1,12 @@
+[project]
+name = "simple-vga-simulator"
+version = "2.0.0"
+description = "虚拟 FPGA 开发板实验台（EIE330）- 本地后端 + 浏览器前端"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0",
+]

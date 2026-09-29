@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>frontend debug harness</title></head>
+<body>
+<pre id="out">RUNNING</pre>
+<script type="module">
+const out = (s) => { document.getElementById('out').textContent += '\n' + s; };
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+try {
+  localStorage.setItem('svs_mock', '1');
+  const api = await import('../webui/js/api.js');
+  out('api imported, isMock=' + api.isMock());
+
+  const board = await api.apiGet('/api/board');
+  out('board def ok: ' + board.name + ', resources=' + Object.keys(board.resources).length);
+
+  let wsMsgs = [];
+  await api.connectWS({ onMsg: (m) => wsMsgs.push(m), onFrame: () => {} });
+  await sleep(200);
+  out('ws snapshot msgs: ' + wsMsgs.map(m => m.type + (m.step ? ':' + m.step + ':' + m.state : '')).join(' | '));
+
+  const proj = await api.apiPost('/api/project/open', { path: 'C:/Users/student/EIE330/Example_2_BallMove' });
+  out('project opened: ' + proj.name + ' top=' + proj.top + ' ports=' + proj.ports.length);
+
+  await api.apiPost('/api/compile/all', {});
+  out('compile/all started');
+  for (let i = 0; i < 20; i++) {
+    await sleep(500);
+    const st = await api.apiGet('/api/compile/status');
+    const s = ['synthesis','fitter','assemble'].map(k => k + '=' + st.steps[k].state).join(' ');
+    if (i % 2 === 0 || st.steps.assemble.state === 'ok') out('t=' + (i*0.5).toFixed(1) + 's ' + s);
+    if (st.steps.assemble.state === 'ok') { out('SOF: ' + JSON.stringify(st.sof)); break; }
+  }
+
+  // program with board off -> expect BOARD_OFF
+  try { await api.apiPost('/api/program', {}); out('ERROR: program should have failed'); }
+  catch (e) { out('program off -> code=' + e.code + ' msg=' + e.message); }
+
+  await api.apiPost('/api/power', { on: true });
+  await api.apiPost('/api/program', {});
+  await sleep(3500);
+  const mc = await api.getMockControls();
+  out('board after program: ' + JSON.stringify(mc.state.board));
+  out('DONE');
+} catch (e) {
+  out('FAIL: ' + (e && (e.code + ' ' + e.message) || e));
+  if (e && e.stack) out(e.stack);
+}
+</script>
+</body>
+</html>

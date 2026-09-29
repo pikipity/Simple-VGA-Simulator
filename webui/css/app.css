@@ -1,0 +1,343 @@
+/* app.css — Simple VGA Simulator v2
+   Two deliberately different worlds:
+   .page-ide   = Quartus Prime Lite style (light gray, structured)
+   .page-board = lab bench style (dark desk, physical board) */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+body { font: 13px/1.45 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+.mono { font-family: Consolas, "Cascadia Mono", monospace; }
+.muted { color: #888; }
+.spacer { flex: 1; }
+
+/* ---------- shared: page tabs ---------- */
+.pagetabs {
+  display: flex; align-items: center; gap: 18px;
+  background: #16233b; color: #cfd9ea;
+  padding: 0 16px; height: 44px;
+  border-bottom: 2px solid #0d1728;
+}
+.pagetabs .brand { font-weight: 600; letter-spacing: .4px; font-size: 13px; white-space: nowrap; }
+.pagetabs .brand em { font-style: normal; color: #7fa7d9; font-size: 11px; }
+.pagetabs .tabs { display: flex; gap: 6px; align-self: flex-end; }
+.pagetabs .tab {
+  padding: 8px 22px 7px; border-radius: 7px 7px 0 0;
+  color: #9fb2cc; text-decoration: none; font-weight: 600; font-size: 13px;
+  background: #1d2f4f; border: 1px solid #2a3f63; border-bottom: none;
+}
+.pagetabs .tab:hover { color: #e6eefb; }
+.pagetabs .tab.active { background: #f0f1f3; color: #1c2b45; }
+.page-board .pagetabs .tab.active { background: #26221e; color: #f3e9d2; }
+.pagetabs .conn { margin-left: auto; font-size: 12px; }
+.pagetabs .conn.bad { color: #ff9d9d; font-weight: 600; }
+
+#fatal {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99;
+  background: #8c1d18; color: #fff; padding: 6px 12px; font: 12px Consolas, monospace;
+}
+
+#toasts { position: fixed; right: 14px; bottom: 44px; z-index: 90; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: #2e7d46; color: #fff; padding: 9px 14px; border-radius: 5px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3); opacity: 0; transform: translateY(8px);
+  transition: opacity .3s, transform .3s; max-width: 420px;
+}
+.toast.err { background: #b3282d; }
+.toast.show { opacity: 1; transform: none; }
+
+/* ================================================================
+   Page A — EDA tool
+   ================================================================ */
+body.page-ide { height: 100vh; display: flex; flex-direction: column; background: #e7e8ea; color: #222; overflow: hidden; }
+
+.toolbar {
+  display: flex; align-items: center; gap: 16px;
+  background: #f6f7f8; border-bottom: 1px solid #c9ccd1; padding: 7px 12px;
+}
+.projinfo { display: flex; gap: 22px; align-items: center; overflow: hidden; }
+.pi label { color: #6a7078; margin-right: 6px; font-size: 12px; }
+.pi.wide span { display: inline-block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+
+.btn {
+  background: #fdfdfd; border: 1px solid #b9bdc4; border-radius: 4px;
+  padding: 6px 14px; font: 600 12.5px "Segoe UI", sans-serif; color: #22303f; cursor: pointer;
+}
+.btn:hover { background: #eef3fa; border-color: #7fa2cf; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: #2f6fb2; border-color: #265d97; color: #fff; }
+.btn.primary:hover { background: #2a63a0; }
+.btn.small { padding: 3px 9px; font-size: 11.5px; }
+
+.main { flex: 1; display: flex; min-height: 0; }
+
+/* tasks pane */
+#tasksPane {
+  width: 285px; min-width: 285px; background: #fbfbfc; border-right: 1px solid #c9ccd1;
+  display: flex; flex-direction: column;
+}
+.pane-title {
+  padding: 7px 10px; font-weight: 700; font-size: 12px; color: #3a4350;
+  background: #eef0f2; border-bottom: 1px solid #d5d8dc; letter-spacing: .4px;
+}
+.tasktree, .tasktree ul { list-style: none; margin: 0; padding: 0; }
+.tasktree ul { padding-left: 22px; }
+.tasktree ul.collapsed { display: none; }
+.trow {
+  display: flex; align-items: center; gap: 6px; padding: 5px 8px 5px 4px;
+  cursor: pointer; border-radius: 3px; user-select: none;
+}
+.trow:hover { background: #e8eef7; }
+.trow.sel { background: #d3e2f5; outline: 1px solid #a9c4e6; }
+.tlabel { flex: 1; }
+.parent > .trow .tlabel { font-weight: 700; }
+.twisty { width: 14px; text-align: center; color: #667; cursor: pointer; }
+.twisty::before { content: '▼'; font-size: 9px; }
+.twisty.closed::before { content: '▶'; }
+.trun {
+  border: none; background: transparent; color: #7a8798; cursor: pointer;
+  font-size: 10px; padding: 2px 4px; border-radius: 3px; visibility: hidden;
+}
+.trow:hover .trun { visibility: visible; }
+.trun:hover { background: #c8d9ee; color: #1d4f86; }
+.ticon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.ticon.st-idle::after { content: '○'; color: #9aa2ab; }
+.ticon.st-ok::after { content: '✔'; color: #1a9e50; }
+.ticon.st-fail::after { content: '✖'; color: #d13438; }
+.ticon.st-stale::after { content: '⚠'; color: #dd9a00; }
+.ticon.st-running {
+  border: 2px solid #cdd3da; border-top-color: #2f6fb2; border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.ticon.prog { color: #4a5568; font-size: 9px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pane-hint { margin-top: auto; padding: 8px 10px; color: #8a929c; font-size: 11px; border-top: 1px solid #e2e4e8; }
+
+/* report pane */
+#reportPane { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fff; }
+.report-head {
+  padding: 8px 14px; border-bottom: 1px solid #d5d8dc; background: #f3f4f6;
+  font-weight: 700; color: #2c3746;
+}
+.report-head #reportSub { margin-left: 12px; font-weight: 400; color: #6a7078; }
+#reportSubtabs { display: flex; gap: 2px; padding: 5px 10px 0; background: #f3f4f6; border-bottom: 1px solid #d5d8dc; }
+.subtab {
+  border: 1px solid #c6cbd2; border-bottom: none; background: #e6e8ec; border-radius: 5px 5px 0 0;
+  padding: 5px 14px; cursor: pointer; font: 600 12px "Segoe UI", sans-serif; color: #445;
+}
+.subtab.active { background: #fff; color: #1c2b45; border-color: #a9b4c2; }
+.report-body { flex: 1; overflow: auto; padding: 14px; }
+.placeholder { color: #8a929c; padding: 30px; text-align: center; font-size: 13px; }
+.flowtext {
+  font: 12.5px/1.5 Consolas, "Cascadia Mono", monospace; background: #f8f9fa;
+  border: 1px solid #e2e4e8; border-radius: 4px; padding: 14px; white-space: pre; margin: 0;
+}
+
+.datatable { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.datatable th, .datatable td { border: 1px solid #dfe2e7; padding: 5px 9px; text-align: left; }
+.datatable th { background: #eef0f3; color: #3a4350; font-weight: 700; position: sticky; top: 0; }
+.datatable tr:nth-child(even) td { background: #f7f8fa; }
+
+.timing { display: flex; flex-wrap: wrap; gap: 14px; }
+.tcard {
+  border: 1px solid #d5d8dc; border-radius: 6px; padding: 12px 18px; min-width: 190px; background: #fafbfc;
+}
+.tcard label { display: block; color: #6a7078; font-size: 11.5px; margin-bottom: 5px; }
+.tcard b { font-size: 19px; }
+.tcard.pass { border-left: 5px solid #1a9e50; }
+.tcard.pass b { color: #157a3e; }
+.tcard.fail { border-left: 5px solid #d13438; }
+.tcard.fail b { color: #b3282d; }
+.tnote { flex-basis: 100%; padding: 10px 14px; border-radius: 5px; font-weight: 600; }
+.tnote.pass { background: #e4f5ea; color: #157a3e; }
+.tnote.fail { background: #fbe6e6; color: #b3282d; }
+
+.asmfile .row { padding: 7px 4px; border-bottom: 1px solid #eee; display: flex; gap: 16px; }
+.asmfile .row label { width: 150px; color: #6a7078; }
+
+.overview { max-width: 560px; }
+.ovrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #eee; }
+.ovname { flex: 1; font-weight: 600; }
+.ovstate { color: #6a7078; font-size: 12px; }
+.ovsof { padding: 12px 10px; color: #2c3746; }
+
+/* pin planner */
+.pinplanner { display: flex; flex-direction: column; gap: 14px; height: 100%; }
+.ppscroll { overflow: auto; max-height: 55%; border: 1px solid #dfe2e7; border-radius: 4px; }
+.pintable tr.assigned td { background: #eef7ee; }
+.pintable tr.hit td { background: #ffe9a8 !important; transition: background .2s; }
+.pinsel { width: 150px; padding: 2px 4px; font: 12px Consolas, monospace; }
+.rescell { color: #475; font-size: 12px; }
+.ppboard { border: 1px solid #dfe2e7; border-radius: 4px; padding: 10px 12px; background: #f8f9fa; }
+.pgroup { display: flex; align-items: baseline; gap: 10px; margin: 6px 0; }
+.pgroup label { width: 70px; color: #3a4350; font-weight: 700; font-size: 12px; }
+.pbtns { display: flex; flex-wrap: wrap; gap: 5px; }
+.pinbtn {
+  border: 1px solid #b9bdc4; background: #fff; border-radius: 3px; padding: 3px 7px;
+  font: 11px Consolas, monospace; cursor: pointer; color: #334;
+}
+.pinbtn:hover { border-color: #2f6fb2; color: #2f6fb2; }
+.pinbtn.used { background: #dcebe0; border-color: #79b38c; }
+
+/* status bar + messages */
+.statusbar {
+  display: flex; align-items: center; gap: 14px; height: 28px; padding: 0 8px;
+  background: #eceef1; border-top: 1px solid #c4c8ce; font-size: 12px; color: #4a5260;
+}
+.msgbtn {
+  border: 1px solid #b9bdc4; background: #f7f8f9; border-radius: 3px; padding: 2px 10px;
+  cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 7px;
+}
+.badge {
+  background: #b38600; color: #fff; border-radius: 9px; padding: 0 7px; font-size: 11px; font-weight: 700;
+}
+.badge.has-err { background: #c22e33; }
+.badge.flash { animation: badgeflash .45s 3; }
+@keyframes badgeflash { 50% { transform: scale(1.25); background: #ff5a5f; } }
+.boardstate { color: #5a6472; }
+.mockflag { background: #7a4dbb; color: #fff; border-radius: 3px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+
+.drawer {
+  position: fixed; left: 0; right: 0; bottom: 28px; height: 270px; z-index: 40;
+  background: #fff; border-top: 2px solid #aab0b9; box-shadow: 0 -6px 18px rgba(0,0,0,.18);
+  display: flex; flex-direction: column;
+}
+.drawer-head { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: #f3f4f6; border-bottom: 1px solid #d5d8dc; }
+.drawer-head select { padding: 2px 6px; }
+.msglist { flex: 1; overflow: auto; padding: 6px 12px; font: 12px/1.6 Consolas, monospace; }
+.msg .mtime { color: #9aa2ab; margin-right: 8px; }
+.msg .mstep { color: #556; margin-right: 6px; }
+.msg.lvl-error { color: #b3282d; }
+.msg.lvl-warning { color: #9a6a00; }
+.msg.lvl-info { color: #333a44; }
+
+/* modals */
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(20,26,36,.38); z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: #fff; width: 580px; max-width: 94vw; border-radius: 6px; overflow: hidden;
+  box-shadow: 0 14px 44px rgba(0,0,0,.35); border: 1px solid #9aa2ab;
+}
+.modal.narrow { width: 460px; }
+.modal-head { background: #2f4f7e; color: #fff; padding: 9px 14px; font-weight: 700; font-size: 13px; }
+.modal-body { padding: 14px; }
+.modal-foot { display: flex; gap: 8px; padding: 10px 14px; background: #f3f4f6; border-top: 1px solid #e0e2e6; }
+
+.fsbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.fsbar .mono { background: #f0f1f3; border: 1px solid #dfe2e7; border-radius: 3px; padding: 3px 8px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fslist { border: 1px solid #dfe2e7; border-radius: 4px; height: 250px; overflow: auto; }
+.fsrow { display: flex; align-items: center; gap: 9px; padding: 7px 10px; cursor: pointer; user-select: none; }
+.fsrow:hover { background: #e8eef7; }
+.fsname { font-weight: 600; }
+.fsmeta { margin-left: auto; color: #7c8590; font-size: 11.5px; }
+
+.errtext { color: #b3282d; font-weight: 600; padding: 8px 2px 0; }
+.oktext { color: #157a3e; font-weight: 600; }
+.oktext.big { padding-top: 10px; font-size: 13px; }
+.oktext a { color: #2f6fb2; }
+
+.prow { padding: 5px 0; display: flex; align-items: center; gap: 8px; }
+.prow label { width: 80px; color: #6a7078; }
+.prow.phase { font-weight: 700; color: #2c3746; padding-top: 8px; }
+.progress { height: 16px; background: #e2e4e8; border: 1px solid #c4c8ce; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.progress-bar { height: 100%; width: 0%; background: linear-gradient(#4a90d9, #2f6fb2); transition: width .25s; }
+
+/* ================================================================
+   Page B — development board (lab bench)
+   ================================================================ */
+body.page-board {
+  min-height: 100vh; display: flex; flex-direction: column;
+  background: #26221e; color: #e8e2d5; overflow: hidden;
+}
+.desk {
+  flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(ellipse at 30% 20%, #3a332c 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 80%, #332c26 0%, transparent 50%),
+    linear-gradient(#2c2721, #211d19);
+  padding: 10px;
+}
+#scene { width: 100%; height: 100%; max-height: calc(100vh - 150px); }
+
+.board-controls {
+  display: flex; align-items: center; gap: 18px; padding: 8px 16px;
+  background: #1b1815; border-top: 1px solid #0f0d0b; font-size: 12px; color: #8f867a;
+}
+.board-controls .ctl { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.board-controls .hint { color: #a89e8f; }
+.board-controls .hint.err { color: #ff9d9d; }
+
+/* --- SVG scene --- */
+#scene .board { transition: filter .45s; }
+#scene.off .board { filter: brightness(.48) saturate(.5); }
+#scene .cable { stroke: #26262b; stroke-width: 17; stroke-linecap: round; }
+#scene.off .cable { opacity: .55; }
+
+.pcb { fill: url(#pcbGrad); stroke: #04331e; stroke-width: 2.5; }
+.mhole { fill: #b9bec6; stroke: #7c8188; }
+.mhole-in { fill: #10160f; }
+.silk { fill: #dde7dd; font: 12px "Segoe UI", sans-serif; pointer-events: none; user-select: none; }
+.silk.title { font-size: 27px; font-weight: 600; letter-spacing: 1.5px; fill: #eef5ee; }
+.silk.subtitle { font-size: 13px; fill: #b9cec0; }
+.silk.bold { font-weight: 700; font-size: 14px; }
+.silk.small { font-size: 10.5px; fill: #c2d4c6; }
+.silk.tiny { font-size: 11px; fill: #c2d4c6; }
+
+.chip { fill: #26272c; stroke: #3d3f45; stroke-width: 2; }
+.chip-pin { stroke: #c9ccd2; stroke-width: 3; }
+.chip-dot { fill: #575b63; }
+.chip-text { fill: #c8ccd4; font: 600 17px "Segoe UI", sans-serif; text-anchor: middle; }
+
+.osc { fill: url(#metalGrad); stroke: #8d9097; stroke-width: 1.5; }
+.osc-in { fill: none; stroke: #9fa3aa; }
+.osc-text { fill: #3c3f45; font: 700 11px Consolas, monospace; text-anchor: middle; }
+
+.jtag { fill: #14161a; stroke: #2c2f35; }
+.jtag-pin { fill: #d8b545; stroke: #8a7420; }
+
+.confled { fill: #12240f; stroke: #2c5426; stroke-width: 1.5; transition: fill .15s; }
+.confled.on { fill: #43d934; filter: url(#glowGreen); stroke: #9fe89a; }
+
+.pjack { fill: #101014; stroke: #3a3d42; stroke-width: 2; }
+.pjack-ring { fill: #0a0a0c; stroke: url(#metalGrad); stroke-width: 5; }
+.pjack-hole { fill: #000; }
+
+.powersw { cursor: pointer; }
+.psw-base { fill: #3a3f45; stroke: #22252a; stroke-width: 1.5; }
+.psw-slot { fill: #14161a; }
+.psw-knob { fill: url(#metalGrad); stroke: #6f7278; transition: x .12s; }
+
+.powerled { fill: #3a0d0d; stroke: #5c1616; stroke-width: 1.5; transition: fill .15s; }
+.powerled.on { fill: #ff3b30; filter: url(#glowRed); stroke: #ff9a92; }
+
+.vgaconn { fill: url(#vgaBlue); stroke: #16294a; stroke-width: 2; }
+.vga-hole { fill: #0d1526; stroke: #6f87b3; stroke-width: 1; }
+
+.keybtn { cursor: pointer; touch-action: none; }
+.keybtn .keybase { fill: #1c1e22; stroke: #3a3d42; stroke-width: 1.5; }
+.keybtn .keycap {
+  fill: #e8e8ea; stroke: #8f9299; stroke-width: 1.5;
+  transition: transform .06s, fill .06s;
+}
+.keybtn .keycap.down { transform: translateY(2.5px) scale(.94); fill: #c9cdd4; }
+#scene:not(.live) .keybtn { cursor: default; }
+
+.led { fill: #12283f; stroke: #2a4a6a; stroke-width: 1.5; transition: fill .08s; }
+.led.on { fill: #4db2ff; filter: url(#glowBlue); stroke: #9fd4ff; }
+
+.bezel { fill: url(#bezelGrad); stroke: #000; stroke-width: 2; }
+.screen-frame { fill: #000; stroke: #0a0b0e; }
+.screen-wrap { width: 640px; height: 480px; background: #000; }
+.screen-wrap canvas { width: 640px; height: 480px; display: block; }
+.stand { fill: #17181c; stroke: #000; }
+.stand-base { fill: #131417; stroke: #000; }
+.mled { fill: #e8a33d; filter: url(#glowRed); }
+.mbrand { fill: #6b7280; font: 600 12px "Segoe UI", sans-serif; text-anchor: middle; }
+
+.nosignal { transition: opacity .18s; }
+.nosignal.hidden { opacity: 0; pointer-events: none; }
+.nosignal-bg { fill: #05070e; }
+.nosignal-box { fill: #10131c; stroke: #4a5468; stroke-width: 1.5; }
+.nosignal-text { fill: #e8ecf4; font: 700 24px "Segoe UI", sans-serif; letter-spacing: 2px; }

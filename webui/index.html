@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EDA Tool — Simple VGA Simulator</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="page-ide">
+<div id="fatal" hidden></div>
+<script>
+  window.onerror = function (m, s, l) {
+    var d = document.getElementById('fatal');
+    d.hidden = false;
+    d.textContent = 'JS error: ' + m + (s ? ' @ ' + s.split('/').pop() + ':' + l : '');
+  };
+  window.onunhandledrejection = function (ev) {
+    var d = document.getElementById('fatal');
+    d.hidden = false;
+    d.textContent = 'JS error (async): ' + (ev.reason && (ev.reason.message || ev.reason) || 'unknown');
+  };
+</script>
+
+<!-- app-level page tabs: two deliberately different worlds -->
+<header class="pagetabs">
+  <span class="brand">Simple VGA Simulator <em>v2</em></span>
+  <nav class="tabs">
+    <a class="tab active" id="tabIde">EDA Tool</a>
+    <a class="tab" id="tabBoard">Development Board</a>
+  </nav>
+  <span class="conn" id="connState"></span>
+</header>
+
+<!-- project bar, Quartus style -->
+<header class="toolbar">
+  <button id="btnOpenProject" class="btn">Open Project…</button>
+  <div class="projinfo">
+    <span class="pi"><label>Project</label><b id="projName">—</b></span>
+    <span class="pi wide"><label>Path</label><span id="projPath" class="mono">—</span></span>
+    <span class="pi"><label>Top Entity</label><span id="projTop" class="mono">—</span></span>
+    <span class="pi"><label>Device</label><span class="mono">Cyclone IV E EP4CE10F17C8</span></span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Tasks pane -->
+  <aside id="tasksPane">
+    <div class="pane-title">Tasks</div>
+    <ul class="tasktree" id="taskTree">
+      <li class="tnode parent" data-step="all">
+        <div class="trow" data-select="all">
+          <span class="twisty" id="twisty"></span>
+          <span class="ticon st-idle"></span>
+          <span class="tlabel">Compile Design</span>
+          <button class="trun" title="Run full compilation">▶</button>
+        </div>
+        <ul id="taskChildren">
+          <li class="tnode" data-step="synthesis">
+            <div class="trow" data-select="synthesis">
+              <span class="ticon st-idle"></span>
+              <span class="tlabel">Analysis &amp; Synthesis</span>
+              <button class="trun" title="Run">▶</button>
+            </div>
+          </li>
+          <li class="tnode" data-step="fitter">
+            <div class="trow" data-select="fitter">
+              <span class="ticon st-idle"></span>
+              <span class="tlabel">Fitter (Place &amp; Route)</span>
+              <button class="trun" title="Run">▶</button>
+            </div>
+          </li>
+          <li class="tnode" data-step="assemble">
+            <div class="trow" data-select="assemble">
+              <span class="ticon st-idle"></span>
+              <span class="tlabel">Assembler (Generate Programming Files)</span>
+              <button class="trun" title="Run">▶</button>
+            </div>
+          </li>
+        </ul>
+      </li>
+      <li class="tnode" data-step="programmer">
+        <div class="trow" id="programmerRow">
+          <span class="ticon prog">▼</span>
+          <span class="tlabel">Programmer</span>
+        </div>
+      </li>
+    </ul>
+    <div class="pane-hint">Double-click a stage to run it.</div>
+  </aside>
+
+  <!-- Report area -->
+  <section id="reportPane">
+    <div class="report-head">
+      <span id="reportTitle">Flow Overview</span>
+      <span id="reportSub"></span>
+    </div>
+    <div id="reportSubtabs" hidden>
+      <button class="subtab" data-sub="pinout">Pin-Out</button>
+      <button class="subtab" data-sub="timing">Timing Summary</button>
+      <button class="subtab" data-sub="pinplanner">Pin Planner</button>
+    </div>
+    <div id="reportBody" class="report-body">
+      <div class="placeholder">Open a project to begin (Open Project… top left).</div>
+    </div>
+  </section>
+</div>
+
+<!-- status bar: Messages lives here, collapsed by default -->
+<footer class="statusbar">
+  <button id="btnMessages" class="msgbtn" title="Show messages">
+    Messages <span id="msgBadge" class="badge" hidden></span>
+  </button>
+  <span id="statusText">Ready</span>
+  <span class="spacer"></span>
+  <span id="boardState" class="boardstate" title="Development board state">Board: OFF</span>
+  <span id="mockFlag" class="mockflag" hidden>MOCK MODE</span>
+</footer>
+
+<!-- Messages drawer -->
+<div id="msgDrawer" class="drawer" hidden>
+  <div class="drawer-head">
+    <b>Messages</b>
+    <select id="msgFilter">
+      <option value="">All stages</option>
+      <option value="project">Project</option>
+      <option value="synthesis">Synthesis</option>
+      <option value="fitter">Fitter</option>
+      <option value="assemble">Assembler</option>
+      <option value="program">Programmer</option>
+    </select>
+    <button id="msgClear" class="btn small">Clear</button>
+    <span class="spacer"></span>
+    <button id="msgClose" class="btn small">✕</button>
+  </div>
+  <div id="msgList" class="msglist"></div>
+</div>
+
+<!-- Open Project modal -->
+<div id="openProjModal" class="modal-mask" hidden>
+  <div class="modal">
+    <div class="modal-head">Open Project — select the folder that contains your .v files</div>
+    <div class="modal-body">
+      <div class="fsbar">
+        <button id="fsUp" class="btn small">↑ Up</button>
+        <span id="fsPath" class="mono"></span>
+      </div>
+      <div id="fsList" class="fslist"></div>
+      <div id="fsError" class="errtext" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button id="fsCancel" class="btn">Cancel</button>
+      <button id="fsSelect" class="btn primary">Select This Folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- generic confirm modal -->
+<div id="confirmModal" class="modal-mask" hidden>
+  <div class="modal narrow">
+    <div class="modal-head">Confirm</div>
+    <div class="modal-body"><p id="confirmText"></p></div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button id="confirmCancel" class="btn">Cancel</button>
+      <button id="confirmOk" class="btn primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Programmer modal -->
+<div id="progModal" class="modal-mask" hidden>
+  <div class="modal">
+    <div class="modal-head">Programmer</div>
+    <div class="modal-body">
+      <div class="prow"><label>Hardware:</label> USB-Blaster (virtual) <span class="oktext">[Connected]</span></div>
+      <div class="prow"><label>File:</label> <span id="progFile" class="mono">—</span>
+        <span id="progMode" class="mono muted">Mode: JTAG</span></div>
+      <div class="progress"><div id="progBar" class="progress-bar"></div></div>
+      <div id="progPhase" class="prow phase">Idle</div>
+      <div id="progMsg" class="errtext" hidden></div>
+      <div id="progDone" class="oktext big" hidden>
+        100% — Configuration successful (CONF_DONE).
+        <a id="progGoBoard" href="#">Go to Development Board →</a>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button id="progClose" class="btn">Close</button>
+      <button id="progStart" class="btn primary">Start</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<script type="module" src="js/ide.js"></script>
+</body>
+</html>
