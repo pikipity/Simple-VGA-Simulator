@@ -1,6 +1,7 @@
 name: Build Test (dev)
 
-# dev / v2-web-board 分支：四平台构建 + 冒烟，只产出 artifacts，不创建 Release
+# dev 分支：四平台构建 + 冒烟，只产出 artifacts，不创建 Release
+# （仅 push 到 dev 自动触发；其他分支可在 Actions 页手动 workflow_dispatch）
 on:
   push:
     branches:
