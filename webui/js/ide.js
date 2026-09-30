@@ -525,15 +525,21 @@ async function loadFs(path) {
 function renderTopModule(body) {
   if (!project) { body.innerHTML = '<div class="placeholder">Open a project first (Open Project…).</div>'; return; }
   const mods = project.modules || [];
-  if (!mods.length) { body.innerHTML = '<div class="placeholder">No Verilog modules found in this project.</div>'; return; }
+  const warns = project.warnings || [];
+  const warnHtml = warns.length
+    ? `<div class="warnbox">⚠ 以下文件未通过 Verilog 解析，已从模块列表中排除（编译前请先修复）：<br>` +
+      warns.map(w => esc(w.file) + ' — ' + esc(w.error)).join('<br>') + '</div>'
+    : '';
+  if (!mods.length) { body.innerHTML = warnHtml + '<div class="placeholder">No Verilog modules found in this project.</div>'; return; }
   const cur = project.top;
   body.innerHTML = `<div class="topmod">
+    ${warnHtml}
     <p class="muted small">选择本工程的顶层模块 / Select the top-level module（写入 .qsf 的 TOP_LEVEL_ENTITY）：</p>
     ${mods.map(m => `
-      <label class="toprow ${m.supported === false ? 'disabled' : ''}">
-        <input type="radio" name="topmod" value="${esc(m.name)}" ${m.name === cur ? 'checked' : ''} ${m.supported === false ? 'disabled' : ''}>
+      <label class="toprow">
+        <input type="radio" name="topmod" value="${esc(m.name)}" ${m.name === cur ? 'checked' : ''}>
         <span class="mono">${esc(m.name)}</span>
-        <span class="muted small">${esc(m.file || '')} · ${(m.ports || []).length} ports${m.supported === false ? ' · unsupported: ' + esc(m.reason || '') : ''}</span>
+        <span class="muted small">${esc(m.file || '')} · ${(m.ports || []).length} ports</span>
       </label>`).join('')}
     <div style="margin-top:12px"><button id="topApply" class="btn primary">Set as Top</button></div>
   </div>`;
@@ -617,7 +623,12 @@ async function refreshProject() {
   try {
     project = await apiGet('/api/project');
     $('projPath').textContent = project.path;
-    try { assignments = (await apiGet('/api/qsf')).assignments || {}; } catch (e) { assignments = {}; }
+    try {
+      const q = await apiGet('/api/qsf');
+      assignments = q.assignments || {};
+      if (q.pruned && q.pruned.length)
+        toast('已自动清理 ' + q.pruned.length + ' 条失效的引脚分配（指向已删除/改名的端口）');
+    } catch (e) { assignments = {}; }
     updateTaskIcons();
   } catch (e) {
     project = null;

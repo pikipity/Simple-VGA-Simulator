@@ -176,6 +176,7 @@ class Backend:
                 "files": scan["files"],
                 "modules": scan["modules"],
                 "top": top,
+                "warnings": scan.get("warnings", []),
             }
         log.info("opened project %s (%d verilog files)", path, len(scan["files"]))
         return self.project_info()
@@ -418,9 +419,6 @@ class Handler(BaseHTTPRequestHandler):
         mod = next((m for m in scan["modules"] if m["name"] == top), None)
         if mod is None:
             raise ProjectError("NO_TOP", "找不到顶层模块 %s" % top)
-        if not mod["supported"]:
-            raise ProjectError("UNSUPPORTED_MODULE",
-                               "顶层模块 %s: %s" % (top, mod["reason"]))
         return mod["ports"]
 
     def _tool_settings(self):
@@ -483,11 +481,31 @@ class Handler(BaseHTTPRequestHandler):
         path = self._current_qsf_path()
         with open(path, "r", encoding="utf-8") as fh:
             text = fh.read()
+        # Auto-prune assignments that reference ports/bits which no
+        # longer exist in the current top module (e.g. the student just
+        # renamed a port) so stale lines never occupy pins. Skipped when
+        # the top module cannot be resolved — never destroy data on a
+        # guess.
+        pruned = []
+        try:
+            ports = self._top_module_ports()
+        except ProjectError:
+            ports = None
+        if ports is not None:
+            text, pruned = qsf_service.prune_stale(text, ports)
+            if pruned:
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(text)
+                log.info("pruned %d stale pin assignment(s): %s",
+                         len(pruned),
+                         ", ".join("%s->PIN_%s" % (d["port"], d["pin"])
+                                   for d in pruned))
+                self.backend.broadcast_steps()
         parsed = qsf_service.parse(text)
         # frontend Pin Planner consumes a port -> pin map
         assignments = {a["port"]: a["pin"] for a in parsed["assignments"]}
         self._ok({"text": text, "assignments": assignments,
-                  "top": parsed["top"]})
+                  "top": parsed["top"], "pruned": pruned})
 
     def _save_qsf(self, text):
         path = self._current_qsf_path()

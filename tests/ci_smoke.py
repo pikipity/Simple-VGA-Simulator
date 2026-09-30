@@ -114,8 +114,11 @@ def main():
 
     tmp = tempfile.mkdtemp(prefix="vga_ci_")
     proj = os.path.join(tmp, "Example_2_BallMove")
-    shutil.copytree(os.path.join(REPO_ROOT, "Example", "Example_2_BallMove"),
-                    proj)
+    # VGA_CI_EXAMPLE overrides the source project (e.g. a pristine HEAD
+    # export) so a locally dirty working tree does not break the smoke.
+    src = os.environ.get("VGA_CI_EXAMPLE") or os.path.join(
+        REPO_ROOT, "Example", "Example_2_BallMove")
+    shutil.copytree(src, proj)
 
     r = call(base, tok, "/api/project/open", "POST", {"path": proj})["data"]
     check("open example project", r["top"] == "Simple_VGA", r["top"])

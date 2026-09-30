@@ -1,4 +1,3 @@
-`timescale 1ns / 1ns
 // ============================================================
 // DevelopmentBoard.v  —  虚拟开发板 PCB 走线（自动生成，请勿手改）
 //
@@ -25,7 +24,8 @@ Simple_VGA u_top (
     .right(key[3]),
     .hsync(vga_hs),
     .vsync(vga_vs),
-    .rgb({vga_d[15], vga_d[14], vga_d[13], vga_d[12], vga_d[11], vga_d[10], vga_d[9], vga_d[8], vga_d[7], vga_d[6], vga_d[5], vga_d[4], vga_d[3], vga_d[2], vga_d[1], vga_d[0]}),
+    .rgb_1({vga_d[0], vga_d[1], vga_d[2], vga_d[3], vga_d[4], vga_d[5], vga_d[6], vga_d[7], vga_d[8], vga_d[9], vga_d[10], vga_d[11], vga_d[12], vga_d[13], vga_d[14]}),
+    .rgb_0(vga_d[15]),
     .led1(led[0]),
     .led2(led[1]),
     .led3(led[2]),

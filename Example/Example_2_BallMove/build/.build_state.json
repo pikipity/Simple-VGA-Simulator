@@ -2,72 +2,72 @@
  "steps": {
   "synthesis": {
    "state": "ok",
-   "time": "2026-09-30T11:55:40",
-   "summary": "Flow Summary\n-----------------------------\nFlow Status              : Successful - Wed Sep 30 11:55:40 2026\nTop-level Entity Name    : Simple_VGA\nFamily                   : Cyclone IV E\nDevice                   : EP4CE10F17C8N\nTotal logic elements     : 93\nTotal registers          : 0\nInferred latches         : 0\nTotal pins               : 26 of 180 used (virtual board)",
-   "hash": "ae911c5692520bb61f1199e499b18d42c2ef6c32"
+   "time": "2026-09-30T13:58:12",
+   "summary": "Flow Summary\n-----------------------------\nFlow Status              : Successful - Wed Sep 30 13:58:12 2026\nTop-level Entity Name    : Simple_VGA\nFamily                   : Cyclone IV E\nDevice                   : EP4CE10F17C8N\nTotal logic elements     : 93\nTotal registers          : 0\nInferred latches         : 0\nTotal pins               : 26 of 180 used (virtual board)",
+   "hash": "daf5b106817af4c08c871c2fbe7b50c8dbaa962d"
   },
   "fitter": {
    "state": "ok",
-   "time": "2026-09-30T11:55:42",
-   "summary": "+-----------+-------------------+---------------+\n; Pin       ; Student Port      ; Board Signal  ;\n+-----------+-------------------+---------------+\n; PIN_A2     ; rgb[1]            ; vga_d[1]      ;\n; PIN_A5     ; rgb[15]           ; vga_d[15]     ;\n; PIN_A6     ; rgb[3]            ; vga_d[3]      ;\n; PIN_A7     ; rgb[7]            ; vga_d[7]      ;\n; PIN_A8     ; rgb[11]           ; vga_d[11]     ;\n; PIN_B4     ; rgb[0]            ; vga_d[0]      ;\n; PIN_B5     ; rgb[2]            ; vga_d[2]      ;\n; PIN_B6     ; rgb[4]            ; vga_d[4]      ;\n; PIN_B7     ; rgb[8]            ; vga_d[8]      ;\n; PIN_B8     ; rgb[12]           ; vga_d[12]     ;\n; PIN_C2     ; hsync             ; vga_hs        ;\n; PIN_D1     ; vsync             ; vga_vs        ;\n; PIN_E1     ; sys_clk           ; clk           ;\n; PIN_E15    ; left              ; key[2]        ;\n; PIN_E16    ; right             ; key[3]        ;\n; PIN_E6     ; rgb[14]           ; vga_d[14]     ;\n; PIN_E7     ; rgb[13]           ; vga_d[13]     ;\n; PIN_E8     ; rgb[9]            ; vga_d[9]      ;\n; PIN_F6     ; rgb[5]            ; vga_d[5]      ;\n; PIN_F7     ; rgb[6]            ; vga_d[6]      ;\n; PIN_F8     ; rgb[10]           ; vga_d[10]     ;\n; PIN_L7     ; led1              ; led[0]        ;\n; PIN_M1     ; down              ; key[1]        ;\n; PIN_M15    ; sys_rst_n         ; key_reset     ;\n; PIN_M2     ; up                ; key[0]        ;\n; PIN_M6     ; led2              ; led[1]        ;\n; PIN_N3     ; led4              ; led[3]        ;\n; PIN_P3     ; led3              ; led[2]        ;\n+-----------+-------------------+---------------+\n\n+-------------------------------------------------------+\n; TimeQuest Timing Analyzer - Slow 1200mV 85C Model     ;\n+---------------------------+---------------------------+\n; Clock                     ; clk (PIN_E1, 50 MHz)      ;\n; Required Period           ;               20.000 ns ;\n; Estimated Period          ;               17.700 ns ;\n; Worst-case Slack          ;                2.300 ns ;\n; Estimated Fmax            ;               56.50 MHz ;\n; Longest path (levels)     ;                   81    ;\n+---------------------------+---------------------------+",
+   "time": "2026-09-30T13:58:14",
+   "summary": "+-----------+-------------------+---------------+\n; Pin       ; Student Port      ; Board Signal  ;\n+-----------+-------------------+---------------+\n; PIN_A2     ; rgb_1[13]         ; vga_d[1]      ;\n; PIN_A5     ; rgb_0             ; vga_d[15]     ;\n; PIN_A6     ; rgb_1[11]         ; vga_d[3]      ;\n; PIN_A7     ; rgb_1[7]          ; vga_d[7]      ;\n; PIN_A8     ; rgb_1[3]          ; vga_d[11]     ;\n; PIN_B4     ; rgb_1[14]         ; vga_d[0]      ;\n; PIN_B5     ; rgb_1[12]         ; vga_d[2]      ;\n; PIN_B6     ; rgb_1[10]         ; vga_d[4]      ;\n; PIN_B7     ; rgb_1[6]          ; vga_d[8]      ;\n; PIN_B8     ; rgb_1[2]          ; vga_d[12]     ;\n; PIN_C2     ; hsync             ; vga_hs        ;\n; PIN_D1     ; vsync             ; vga_vs        ;\n; PIN_E1     ; sys_clk           ; clk           ;\n; PIN_E15    ; left              ; key[2]        ;\n; PIN_E16    ; right             ; key[3]        ;\n; PIN_E6     ; rgb_1[0]          ; vga_d[14]     ;\n; PIN_E7     ; rgb_1[1]          ; vga_d[13]     ;\n; PIN_E8     ; rgb_1[5]          ; vga_d[9]      ;\n; PIN_F6     ; rgb_1[9]          ; vga_d[5]      ;\n; PIN_F7     ; rgb_1[8]          ; vga_d[6]      ;\n; PIN_F8     ; rgb_1[4]          ; vga_d[10]     ;\n; PIN_L7     ; led1              ; led[0]        ;\n; PIN_M1     ; down              ; key[1]        ;\n; PIN_M15    ; sys_rst_n         ; key_reset     ;\n; PIN_M2     ; up                ; key[0]        ;\n; PIN_M6     ; led2              ; led[1]        ;\n; PIN_N3     ; led4              ; led[3]        ;\n; PIN_P3     ; led3              ; led[2]        ;\n+-----------+-------------------+---------------+\n\n+-------------------------------------------------------+\n; TimeQuest Timing Analyzer - Slow 1200mV 85C Model     ;\n+---------------------------+---------------------------+\n; Clock                     ; clk (PIN_E1, 50 MHz)      ;\n; Required Period           ;               20.000 ns ;\n; Estimated Period          ;               17.700 ns ;\n; Worst-case Slack          ;                2.300 ns ;\n; Estimated Fmax            ;               56.50 MHz ;\n; Longest path (levels)     ;                   81    ;\n+---------------------------+---------------------------+",
    "pins": [
     {
      "pin": "A2",
-     "port": "rgb[1]",
+     "port": "rgb_1[13]",
      "resource": "vga_d[1]",
      "dir": "output"
     },
     {
      "pin": "A5",
-     "port": "rgb[15]",
+     "port": "rgb_0",
      "resource": "vga_d[15]",
      "dir": "output"
     },
     {
      "pin": "A6",
-     "port": "rgb[3]",
+     "port": "rgb_1[11]",
      "resource": "vga_d[3]",
      "dir": "output"
     },
     {
      "pin": "A7",
-     "port": "rgb[7]",
+     "port": "rgb_1[7]",
      "resource": "vga_d[7]",
      "dir": "output"
     },
     {
      "pin": "A8",
-     "port": "rgb[11]",
+     "port": "rgb_1[3]",
      "resource": "vga_d[11]",
      "dir": "output"
     },
     {
      "pin": "B4",
-     "port": "rgb[0]",
+     "port": "rgb_1[14]",
      "resource": "vga_d[0]",
      "dir": "output"
     },
     {
      "pin": "B5",
-     "port": "rgb[2]",
+     "port": "rgb_1[12]",
      "resource": "vga_d[2]",
      "dir": "output"
     },
     {
      "pin": "B6",
-     "port": "rgb[4]",
+     "port": "rgb_1[10]",
      "resource": "vga_d[4]",
      "dir": "output"
     },
     {
      "pin": "B7",
-     "port": "rgb[8]",
+     "port": "rgb_1[6]",
      "resource": "vga_d[8]",
      "dir": "output"
     },
     {
      "pin": "B8",
-     "port": "rgb[12]",
+     "port": "rgb_1[2]",
      "resource": "vga_d[12]",
      "dir": "output"
     },
@@ -103,37 +103,37 @@
     },
     {
      "pin": "E6",
-     "port": "rgb[14]",
+     "port": "rgb_1[0]",
      "resource": "vga_d[14]",
      "dir": "output"
     },
     {
      "pin": "E7",
-     "port": "rgb[13]",
+     "port": "rgb_1[1]",
      "resource": "vga_d[13]",
      "dir": "output"
     },
     {
      "pin": "E8",
-     "port": "rgb[9]",
+     "port": "rgb_1[5]",
      "resource": "vga_d[9]",
      "dir": "output"
     },
     {
      "pin": "F6",
-     "port": "rgb[5]",
+     "port": "rgb_1[9]",
      "resource": "vga_d[5]",
      "dir": "output"
     },
     {
      "pin": "F7",
-     "port": "rgb[6]",
+     "port": "rgb_1[8]",
      "resource": "vga_d[6]",
      "dir": "output"
     },
     {
      "pin": "F8",
-     "port": "rgb[10]",
+     "port": "rgb_1[4]",
      "resource": "vga_d[10]",
      "dir": "output"
     },
@@ -187,18 +187,18 @@
     "pass": true,
     "depth": 81
    },
-   "hash": "ae911c5692520bb61f1199e499b18d42c2ef6c32"
+   "hash": "daf5b106817af4c08c871c2fbe7b50c8dbaa962d"
   },
   "assemble": {
    "state": "ok",
-   "time": "2026-09-30T11:55:46",
+   "time": "2026-09-30T13:58:19",
    "summary": "Assembler: generated Simple_VGA.sof (173312 bytes)",
    "sof": {
     "name": "Simple_VGA.sof",
     "size_bytes": 173312,
-    "mtime": 1790740546.5781684
+    "mtime": 1790747899.3490055
    },
-   "hash": "ae911c5692520bb61f1199e499b18d42c2ef6c32"
+   "hash": "daf5b106817af4c08c871c2fbe7b50c8dbaa962d"
   }
  },
  "sof": "Simple_VGA.sof"

@@ -133,6 +133,31 @@ def expand_port_bits(port, module_ports):
     return {(name, None)}
 
 
+_LOC_LINE_RE = re.compile(
+    r"^(\s*)set_location_assignment\s+(PIN_[A-Za-z0-9]+)\s+-to\s+(\S+)"
+    r"\s*(?://[^\n]*)?$", re.I)
+
+
+def prune_stale(text, module_ports):
+    """Drop set_location_assignment lines whose port/bit no longer exists
+    in the current top module (e.g. the port was renamed or resized).
+
+    Returns (new_text, dropped) with dropped = [{pin, port}]. Lines that
+    do not parse as location assignments are kept untouched.
+    """
+    kept, dropped = [], []
+    for line in text.splitlines(keepends=True):
+        m = _LOC_LINE_RE.match(line.rstrip("\r\n"))
+        if m:
+            try:
+                expand_port_bits(m.group(3), module_ports)
+            except ProjectError:
+                dropped.append({"pin": m.group(2), "port": m.group(3)})
+                continue
+        kept.append(line)
+    return "".join(kept), dropped
+
+
 def _remove_port_lines(text, port):
     """Drop every set_location_assignment naming exactly `port`."""
     pat = re.compile(
@@ -150,7 +175,11 @@ def assign(text, pin, port, board_pins, module_ports):
     - a bus port must be assigned per bit (name[i]) -> BUS_NEEDS_BIT
     - pin already used by another port -> PIN_CONFLICT
     - re-assigning a port moves it (its old line is dropped first)
+
+    Stale assignments (ports that no longer exist) are pruned up front
+    so they never block a new assignment.
     """
+    text, _ = prune_stale(text, module_ports)
     pin = _normalize_pin(pin)
     if pin not in board_pins:
         raise ProjectError("UNKNOWN_PIN",

@@ -246,6 +246,7 @@ body.page-ide { height: 100vh; display: flex; flex-direction: column; background
 .fsmeta { margin-left: auto; color: #7c8590; font-size: 11.5px; }
 
 .errtext { color: #b3282d; font-weight: 600; padding: 8px 2px 0; }
+.warnbox { color: #9a6a00; background: #fdf6e3; border: 1px solid #e8d9a0; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; }
 .oktext { color: #157a3e; font-weight: 600; }
 .oktext.big { padding-top: 10px; font-size: 13px; }
 .oktext a { color: #2f6fb2; }

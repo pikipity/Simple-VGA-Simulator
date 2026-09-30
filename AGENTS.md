@@ -95,7 +95,7 @@ Simple-VGA-Simulator/
 │   └── services/
 │       ├── diagnostics.py      # verilator/g++/yosys 三级探测与版本验证
 │       ├── toolchain.py        # 工具链提供者（native / WSL 回退、路径互译、进程回收）
-│       ├── project_service.py  # 工程扫描、Verilog ANSI 端口解析
+│       ├── project_service.py  # 工程扫描：经 Yosys 前端（read_verilog + write_json）解析模块/端口/实例化图
 │       ├── qsf_service.py      # QSF 解析/校验/生成（对照 board JSON）
 │       ├── build_service.py    # 综合(Yosys)/布线(校验+时序估算)/汇编(verilator+g++)
 │       └── board_service.py    # 板卡状态机 + 仿真进程托管 + 帧/事件中继
@@ -125,7 +125,7 @@ Simple-VGA-Simulator/
 
 ```
 MyProject/
-├── *.v                         # 学生的 Verilog（仅 .v，ANSI 端口）
+├── *.v                         # 学生的 Verilog（仅 .v；ANSI/非 ANSI/#(parameter...) 头均支持，参数取默认值）
 └── top.qsf                     # 引脚约束（软件提供模板，Pin Planner 可视化编辑）
 ```
 
@@ -140,6 +140,10 @@ set_location_assignment PIN_M15 -to sys_rst_n
 set_location_assignment PIN_B4 -to vga_data[0]
 create_clock -period 20.000 [get_ports clk]
 ```
+
+**解析契约**：工程扫描直接用 Yosys 前端（`read_verilog -I .` + `write_json` 到 stdout）——与综合是同一个解析器，IDE 对代码的理解永远和编译一致。ANSI/非 ANSI 端口、`#(parameter ...)` 参数化头（按默认值解析端口位宽）、跨文件宏与 `` `include `` 均支持。解析失败的文件（语法错误、testbench 风格的 `$finish` 等）按 yosys 报错逐文件剔除，并在 Top Module 页黄条提示；编译时该文件仍会报出真实 yosys 错误。不要求 `timescale（仿真按周期驱动、不解释 `#` 延迟；编译带 `--Wno-TIMESCALEMOD`）。
+
+**QSF 陈旧清理**：Pin Planner 数据每次读取时自动剔除指向已不存在端口/位越界的 `set_location_assignment`（学生改名端口后旧分配不再占用引脚），剔除结果随 `/api/qsf` 响应的 `pruned` 字段通知前端 toast。
 
 ### DevelopmentBoard.v 的语义升级
 
@@ -266,6 +270,7 @@ Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILA
 |------|------|
 | 2026-02-17 ~ 2026-06-03 | v1：GLUT→SDL2 迁移、鼠标虚拟按钮、Flutter GUI Launcher、Windows 支持（详见 git log 与 v1 文档） |
 | 2026-09-29 | **v2 重构启动**（分支 `v2-web-board`）：废弃 Flutter GUI + SDL2 窗口，改为纯 Web（Python 标准库后端 + 浏览器渲染）；无头仿真器经管道输出帧；仿 Quartus 流程（QSF 约束/Synthesis/Fitter/Assembler/Programmer）；开发板实物化界面（电源开关、断电丢配置、CONF_DONE、No Signal）；引脚表照抄野火 EP4CE10_Pro 原理图；仿真按墙钟 60Hz pacing；按键抖动注入 |
+| 2026-09-30 | 工程解析器由 regex 替换为 **Yosys 前端 JSON**（参数化头/非 ANSI/跨文件宏/体内 localparam 位宽均支持；解析失败的文件逐文件剔除并黄条提示）；**QSF 陈旧引脚分配自动剔除**（端口改名/缩位后旧分配不再占用引脚）；wrapper 模板移除 `timescale（v2 全链路不再需要）；wrapper 拼接修复升序区间 `[0:7]` 的位序 |
 
 ## License
 

@@ -290,14 +290,13 @@ class BuildService:
         scan = project_service.scan_project(proj["path"])
         top = self._resolve_top(proj, scan)
         mod = next((m for m in scan["modules"] if m["name"] == top), None)
-        if mod and not mod["supported"]:
-            raise ProjectError("UNSUPPORTED_MODULE",
-                               "顶层模块 %s: %s" % (top, mod["reason"]))
+        if mod is None:
+            raise ProjectError("NO_TOP", "找不到顶层模块 %s" % top)
         cmd = ["yosys", "-p",
-               "read_verilog %s; hierarchy -top %s; proc; check; flatten; stat; "
+               "read_verilog -I . %s; hierarchy -top %s; proc; check; flatten; stat; "
                "dump t:$dff t:$dffe t:$adff t:$sdff t:$dffsr t:$aldff "
                "t:$dlatch t:$adlatch t:$dlatchsr"
-               % (" ".join(scan["files"]), top)]
+               % (project_service.yosys_file_args(scan["files"]), top)]
         self._begin_step("synthesis")
         rc, lines = self._run_streaming("synthesis", cmd, proj["path"])
         if rc != 0:
@@ -400,9 +399,6 @@ class BuildService:
         mod = next((m for m in scan["modules"] if m["name"] == top), None)
         if mod is None:
             raise ProjectError("NO_TOP", "找不到顶层模块 %s" % top)
-        if not mod["supported"]:
-            raise ProjectError("UNSUPPORTED_MODULE",
-                               "顶层模块 %s: %s" % (top, mod["reason"]))
         ports = {p["name"]: p for p in mod["ports"]}
         issues = []
         valid = []
@@ -494,8 +490,8 @@ class BuildService:
         # 门级网表深度估算：synth 映射到通用门后跑 ltp，取所有模块中的最大值
         # （ltp 对每个模块各报一行 "Longest topological path ... (length=N)"）
         cmd = ["yosys", "-p",
-               "read_verilog %s; synth -top %s; ltp"
-               % (" ".join(scan["files"]), top)]
+               "read_verilog -I . %s; synth -top %s; ltp"
+               % (project_service.yosys_file_args(scan["files"]), top)]
         rc, lines = self._run_streaming("fitter", cmd, proj["path"],
                                         stream=False)
         depth = None
@@ -642,8 +638,10 @@ class BuildService:
             if p["width"] is None:
                 raise ProjectError("BAD_WIDTH",
                                    "端口 %s 位宽不是常量表达式，无法生成 wrapper" % name)
-            lo, hi = min(p["msb"], p["lsb"]), max(p["msb"], p["lsb"])
-            idxs = list(range(hi, lo - 1, -1))  # msb first in concat
+            # declared MSB first in the concatenation; for an ascending
+            # range like [0:7] the declared MSB is the smaller index
+            step = -1 if p["msb"] >= p["lsb"] else 1
+            idxs = list(range(p["msb"], p["lsb"] + step, step))
             if direction != "input" and all(
                     (name, i) not in bit_src for i in idxs):
                 warnings.append("输出端口 %s 未分配，悬空" % name)

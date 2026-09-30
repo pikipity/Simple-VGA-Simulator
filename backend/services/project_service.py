@@ -1,23 +1,33 @@
-"""Project scanning and Verilog ANSI port-list parsing.
+"""Project scanning and directory browsing.
 
-Only ANSI-style headers (`module m(input wire clk, ...);`) are
-supported, matching the course material. Modules with `#(parameter...)`
-headers or non-ANSI port lists are flagged as unsupported so the UI can
-explain the limitation instead of failing cryptically downstream.
+Module/port discovery is done by the Yosys Verilog frontend itself
+(`read_verilog` + `write_json` on stdout): the same parser that later
+runs Analysis & Synthesis decides what the code says, so the IDE can
+never disagree with the compiler. Parameterized module headers
+(`#(parameter W = 8)`), non-ANSI port lists, cross-file macros and
+`include` files all work; parameter-dependent port widths are resolved
+with their default values.
+
+Files that fail to read (syntax errors, testbench-style code such as
+`$finish` in an initial block, ...) are excluded one at a time — the
+offending file is identified from yosys's "file:line: ERROR" output —
+so one bad file never hides the modules in the others. Excluded files
+are reported under "warnings" in the scan result.
 """
+import json
 import logging
 import os
 import re
+import subprocess
+
+from . import toolchain
 
 log = logging.getLogger("project")
 
-_IDENT = r"[A-Za-z_]\w*"
-_PORT_ITEM_RE = re.compile(
-    r"^\s*(?:(input|output|inout)\b)?\s*"
-    r"(?:(?:wire|reg|logic)\b\s*)?"
-    r"(?:signed\b\s*)?"
-    r"(\[[^\]]*\])?\s*"
-    r"(" + _IDENT + r")\s*$")
+_YOSYS_TIMEOUT = 60
+# "sub.v:12: ERROR: syntax error ..." — yosys echoes the filename exactly
+# as passed on the command line (we pass bare relative names).
+_ERR_RE = re.compile(r"(?m)^(.+?\.v):(\d+): ERROR: .*$")
 
 
 class ProjectError(Exception):
@@ -29,152 +39,138 @@ class ProjectError(Exception):
         self.message = message
 
 
-def _strip_comments(text):
-    # Blank out string literals first so "//" inside a string is safe.
-    text = re.sub(r'"(?:\\.|[^"\\])*"', '""', text)
-    text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+def _quote(fname):
+    if '"' in fname or "\n" in fname:
+        raise ProjectError("BAD_FILENAME", "文件名含非法字符: %r" % fname)
+    return '"%s"' % fname
 
 
-def _split_top_commas(text):
-    """Split on commas that are not inside () or []."""
-    parts, depth, start = [], 0, 0
-    for i, ch in enumerate(text):
-        if ch in "([":
-            depth += 1
-        elif ch in ")]":
-            depth -= 1
-        elif ch == "," and depth == 0:
-            parts.append(text[start:i])
-            start = i + 1
-    parts.append(text[start:])
-    return parts
+def yosys_file_args(files):
+    """Quoted file arguments for a yosys script (shared by scan/synth)."""
+    return " ".join(_quote(f) for f in files)
 
 
-def _match_paren(text, open_idx):
-    depth = 0
-    for i in range(open_idx, len(text)):
-        if text[i] == "(":
-            depth += 1
-        elif text[i] == ")":
-            depth -= 1
-            if depth == 0:
-                return i
-    return -1
+def _tail(text, n=12):
+    lines = [l for l in text.splitlines() if l.strip()]
+    return "\n".join(lines[-n:]) if lines else "(yosys 无输出)"
 
 
-def _parse_width(range_text):
-    """'[15:0]' -> (15, 0); non-constant expressions -> (raw, raw)."""
-    inner = range_text.strip()[1:-1]
-    if ":" not in inner:
-        return None
-    left, right = inner.split(":", 1)
-    left, right = left.strip(), right.strip()
-    try:
-        return int(left, 0), int(right, 0)
-    except ValueError:
-        return left, right  # keep raw expressions, width unknown
+def _error_line(out, fname):
+    for m in _ERR_RE.finditer(out):
+        if m.group(1) == fname:
+            return m.group(0)
+    return _tail(out)
 
 
-def parse_module_header(name, header):
-    """Parse an ANSI port list. Returns (ports, supported, reason).
+def _yosys_read(proj_path, files):
+    """Single-shot yosys read of `files`. Returns (data, bad_file, output).
 
-    ports: [{name, direction, msb, lsb, width}] with width None for
-    scalars and for non-constant ranges.
+    data is the parsed JSON dict on success (None on failure); bad_file
+    is the filename blamed by yosys's error output (None when it could
+    not be identified); output is combined stderr+stdout for reporting.
     """
-    ports = []
-    last_direction = None
-    for raw in _split_top_commas(header):
-        item = raw.strip()
-        if not item:
-            continue
-        m = _PORT_ITEM_RE.match(item)
-        if not m:
-            return ports, False, "cannot parse port item: %r" % item
-        direction = m.group(1) or last_direction
-        if direction is None:
-            return ports, False, "non-ANSI port list (missing direction)"
-        last_direction = direction
-        msb = lsb = width = None
-        if m.group(2):
-            bounds = _parse_width(m.group(2))
-            if bounds is None:
-                return ports, False, "cannot parse range: %s" % m.group(2)
-            msb, lsb = bounds
-            if isinstance(msb, int) and isinstance(lsb, int):
-                width = abs(msb - lsb) + 1
-        ports.append({"name": m.group(3), "direction": direction,
-                      "msb": msb, "lsb": lsb, "width": width})
-    return ports, True, None
+    script = "read_verilog -I . %s; write_json" % " ".join(
+        _quote(f) for f in files)
+    argv, cwd = toolchain.wrap_cmd(["yosys", "-q", "-p", script],
+                                   cwd=proj_path)
+    try:
+        proc = subprocess.run(
+            argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=_YOSYS_TIMEOUT,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except OSError as exc:
+        raise ProjectError(
+            "TOOL_MISSING",
+            "无法运行 yosys: %s（请在 Tools 中检查工具链）" % exc)
+    except subprocess.TimeoutExpired:
+        raise ProjectError("PARSE_TIMEOUT", "yosys 解析工程超时")
+    out = proc.stdout.decode("utf-8", "replace")
+    err = proc.stderr.decode("utf-8", "replace")
+    combined = (err + "\n" + out).strip()
+    if proc.returncode == 0:
+        # write_json emits on stdout; tolerate any preamble before '{'.
+        # ($finish in a stray testbench aborts the yosys script with
+        # rc==0 but no JSON — that case falls through to error blame.)
+        brace = out.find("{")
+        if brace >= 0:
+            try:
+                data = json.loads(out[brace:])
+            except ValueError:
+                data = None
+            if isinstance(data, dict) and "modules" in data:
+                return data, None, combined
+    m = _ERR_RE.search(combined)
+    bad = m.group(1) if m else None
+    return None, bad, combined
 
 
-def parse_verilog_file(path):
-    """Parse all module declarations in one .v file."""
-    with open(path, "r", encoding="utf-8", errors="replace") as fh:
-        text = _strip_comments(fh.read())
+def _modules_from_json(data):
+    """yosys JSON -> module table with our stable port dict shape."""
     modules = []
-    for m in re.finditer(r"\bmodule\s+(" + _IDENT + r")\s*", text):
-        name = m.group(1)
-        pos = m.end()
-        supported, reason = True, None
-        if pos < len(text) and text[pos] == "#":
-            # #(parameter ...) headers are not supported by the pipeline.
-            modules.append({"name": name, "file": path, "ports": [],
-                            "supported": False,
-                            "reason": "parameterized module header #(..) not supported"})
-            continue
-        open_idx = text.find("(", pos)
-        semi_idx = text.find(";", pos)
-        if open_idx == -1 or (semi_idx != -1 and semi_idx < open_idx):
-            modules.append({"name": name, "file": path, "ports": [],
-                            "supported": False,
-                            "reason": "module without a port list"})
-            continue
-        close_idx = _match_paren(text, open_idx)
-        if close_idx == -1:
-            modules.append({"name": name, "file": path, "ports": [],
-                            "supported": False,
-                            "reason": "unbalanced parentheses in header"})
-            continue
-        ports, supported, reason = parse_module_header(
-            name, text[open_idx + 1:close_idx])
-        modules.append({"name": name, "file": path, "ports": ports,
-                        "supported": supported, "reason": reason})
-    return modules, text
-
-
-def find_instantiated_names(text, module_names):
-    """Names of modules instantiated at least once in the design text."""
-    instantiated = set()
-    for name in module_names:
-        # e.g. "vga_ctrl vga_ctrl_inst (" — module name followed by an
-        # instance identifier and an opening paren.
-        if re.search(r"\b" + re.escape(name) + r"\s+" + _IDENT + r"\s*\(", text):
-            instantiated.add(name)
-    return instantiated
+    for name in sorted(data.get("modules", {})):
+        if name.startswith("$"):
+            continue  # derived parameterizations only appear post-hierarchy
+        m = data["modules"][name]
+        src = (m.get("attributes") or {}).get("src", "")
+        fname = src.split(":", 1)[0] if src else ""
+        ports = []
+        for pname, p in (m.get("ports") or {}).items():
+            n = len(p.get("bits") or [])
+            offset = p.get("offset") or 0
+            upto = bool(p.get("upto") or 0)
+            direction = p.get("direction") or "input"
+            if n <= 1 and not offset and not upto:
+                msb = lsb = width = None  # scalar port
+            elif upto:  # e.g. [0:7]: index 0 is the most significant
+                msb, lsb, width = offset, offset + n - 1, n
+            else:       # e.g. [7:0] / [16:9]
+                msb, lsb, width = offset + n - 1, offset, n
+            ports.append({"name": pname, "direction": direction,
+                          "msb": msb, "lsb": lsb, "width": width})
+        modules.append({"name": name, "file": fname, "ports": ports,
+                        "supported": True, "reason": None})
+    return modules
 
 
 def scan_project(path):
-    """Scan a project directory: .v files, module table, top candidate."""
+    """Scan a project directory: .v files, module table, top candidates."""
     files = sorted(f for f in os.listdir(path)
                    if f.lower().endswith(".v") and
                    os.path.isfile(os.path.join(path, f)))
     if not files:
         raise ProjectError("NO_VERILOG",
                            "目录中没有 .v 文件: %s" % path)
-    modules = []
-    texts = []
-    for fname in files:
-        mods, text = parse_verilog_file(os.path.join(path, fname))
-        for mod in mods:
-            mod["file"] = fname
-        modules.extend(mods)
-        texts.append(text)
-    whole = "\n".join(texts)
-    instantiated = find_instantiated_names(whole, [m["name"] for m in modules])
+    if toolchain.detect() is None:
+        raise ProjectError(
+            "TOOL_MISSING",
+            "未找到 yosys 工具链（解析工程需要 yosys；请在 Tools 中检查）")
+    remaining = list(files)
+    warnings = []
+    while True:
+        data, bad, out = _yosys_read(path, remaining)
+        if data is not None:
+            break
+        if not bad or bad not in remaining:
+            raise ProjectError("PARSE_FAIL",
+                               "Verilog 解析失败：\n" + _tail(out))
+        remaining.remove(bad)
+        line = _error_line(out, bad)
+        log.warning("scan: excluding %s: %s", bad, line)
+        warnings.append({"file": bad, "error": line})
+        if not remaining:
+            raise ProjectError(
+                "PARSE_FAIL", "所有 .v 文件均解析失败：\n" +
+                "\n".join(w["error"] for w in warnings))
+    modules = _modules_from_json(data)
+    instantiated = set()
+    for m in data.get("modules", {}).values():
+        for cell in (m.get("cells") or {}).values():
+            ctype = cell.get("type") or ""
+            if ctype and not ctype.startswith("$"):
+                instantiated.add(ctype)
     candidates = [m["name"] for m in modules if m["name"] not in instantiated]
-    return {"files": files, "modules": modules, "top_candidates": candidates}
+    return {"files": files, "modules": modules,
+            "top_candidates": candidates, "warnings": warnings}
 
 
 def browse_folder():

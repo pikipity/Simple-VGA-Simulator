@@ -27,22 +27,6 @@ set_location_assignment PIN_E16 -to right
 # VGA connector
 set_location_assignment PIN_C2 -to hsync
 set_location_assignment PIN_D1 -to vsync
-set_location_assignment PIN_B4 -to rgb[0]
-set_location_assignment PIN_A2 -to rgb[1]
-set_location_assignment PIN_B5 -to rgb[2]
-set_location_assignment PIN_A6 -to rgb[3]
-set_location_assignment PIN_B6 -to rgb[4]
-set_location_assignment PIN_F6 -to rgb[5]
-set_location_assignment PIN_F7 -to rgb[6]
-set_location_assignment PIN_A7 -to rgb[7]
-set_location_assignment PIN_B7 -to rgb[8]
-set_location_assignment PIN_E8 -to rgb[9]
-set_location_assignment PIN_F8 -to rgb[10]
-set_location_assignment PIN_A8 -to rgb[11]
-set_location_assignment PIN_B8 -to rgb[12]
-set_location_assignment PIN_E7 -to rgb[13]
-set_location_assignment PIN_E6 -to rgb[14]
-set_location_assignment PIN_A5 -to rgb[15]
 
 # LED2~LED5 - active low (0 = on)
 set_location_assignment PIN_L7 -to led1
@@ -50,3 +34,19 @@ set_location_assignment PIN_M6 -to led2
 set_location_assignment PIN_P3 -to led3
 set_location_assignment PIN_N3 -to led4
 # led5: not assigned - this board has only 4 user LEDs (LED2~LED5)
+set_location_assignment PIN_A5 -to rgb_0
+set_location_assignment PIN_B4 -to rgb_1[14]
+set_location_assignment PIN_A2 -to rgb_1[13]
+set_location_assignment PIN_B5 -to rgb_1[12]
+set_location_assignment PIN_A6 -to rgb_1[11]
+set_location_assignment PIN_B6 -to rgb_1[10]
+set_location_assignment PIN_F6 -to rgb_1[9]
+set_location_assignment PIN_F7 -to rgb_1[8]
+set_location_assignment PIN_A7 -to rgb_1[7]
+set_location_assignment PIN_B7 -to rgb_1[6]
+set_location_assignment PIN_E8 -to rgb_1[5]
+set_location_assignment PIN_F8 -to rgb_1[4]
+set_location_assignment PIN_A8 -to rgb_1[3]
+set_location_assignment PIN_B8 -to rgb_1[2]
+set_location_assignment PIN_E7 -to rgb_1[1]
+set_location_assignment PIN_E6 -to rgb_1[0]
