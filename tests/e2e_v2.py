@@ -92,8 +92,9 @@ check("fitter ok", st["fitter"]["state"] == "ok",
       "Fmax in report: " + ("77" if "77" in st["fitter"]["summary"] else "?"))
 check("assemble ok", st["assemble"]["state"] == "ok")
 sof = api("/api/compile/status")["data"]["sof"]
-check("sof exists", sof is not None, str(sof))
-rev1 = sof["revision"] if sof else 0
+check("sof exists", sof is not None and sof["name"] == "ColorBar.sof",
+      str(sof))
+mtime1 = sof["mtime"] if sof else 0
 
 # program while powered off -> must fail
 r = api("/api/program", {})
@@ -125,7 +126,9 @@ r = api("/api/compile/all", {})
 check("recompile started", r["ok"])
 wait_compile()
 sof2 = api("/api/compile/status")["data"]["sof"]
-check("sof revision bumped", sof2 and sof2["revision"] == rev1 + 1, str(sof2))
+check("sof overwritten (same name, newer)", sof2
+      and sof2["name"] == "ColorBar.sof" and sof2["mtime"] > mtime1,
+      str(sof2))
 r = api("/api/program", {})
 check("reprogram accepted", r["ok"])
 time.sleep(4)

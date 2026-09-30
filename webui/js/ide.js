@@ -20,11 +20,15 @@ let programming = false;
 let fsState = { path: null, parent: null, dirs: [] };
 
 const STEP_ORDER = ['synthesis', 'fitter', 'assemble'];
+const COMPILE_STEPS = ['all', ...STEP_ORDER];
 const STEP_TITLE = {
   all: 'Flow Overview',
+  top: 'Top Module',
+  pinplanner: 'Pin Planner',
   synthesis: 'Analysis & Synthesis — Flow Summary',
   fitter: 'Fitter (Place & Route)',
   assemble: 'Assembler — Output Files',
+  programmer: 'Programmer',
 };
 
 init();
@@ -37,7 +41,7 @@ async function init() {
   wireTasks();
   wireMessages();
   wireFsModal();
-  wireProgrammer();
+  wireToolsSettings();
   wireSubtabs();
   try { boardDef = await apiGet('/api/board'); } catch (e) { /* board view still works without */ }
   await refreshProject();
@@ -63,8 +67,15 @@ function onWsMessage(m) {
     addMessage(m);
   } else if (m.type === 'step') {
     if (steps[m.step]) {
-      steps[m.step] = { state: m.state, summary: m.summary ?? steps[m.step].summary };
-      if (m.step === 'assemble' && m.state === 'ok' && m.summary) sof = m.summary;
+      const prev = steps[m.step];
+      steps[m.step] = {
+        state: m.state,
+        summary: m.summary ?? prev.summary,
+        pins: m.pins ?? prev.pins,
+        timing: m.timing ?? prev.timing,
+        sof: m.sof ?? prev.sof,
+      };
+      if (m.sof) sof = m.sof;
       updateTaskIcons();
       $('statusText').textContent = m.state === 'running'
         ? `Running ${STEP_TITLE[m.step] || m.step}…` : 'Ready';
@@ -74,7 +85,7 @@ function onWsMessage(m) {
     programProgress(m);
   } else if (m.type === 'board') {
     $('boardState').textContent =
-      'Board: ' + (m.power ? (m.configured ? `RUNNING (rev ${m.rev})` : 'ON, unconfigured') : 'OFF');
+      'Board: ' + (m.power ? (m.configured ? 'RUNNING' : 'ON, unconfigured') : 'OFF');
   }
 }
 
@@ -98,7 +109,6 @@ function wireTasks() {
     $('taskChildren').classList.toggle('collapsed');
     $('twisty').classList.toggle('closed');
   });
-  $('programmerRow').addEventListener('click', openProgrammer);
 }
 
 function selectNode(step) {
@@ -115,6 +125,8 @@ function updateTaskIcons() {
     const icon = document.querySelector(`.tnode[data-step="${step}"] .ticon`);
     icon.className = 'ticon st-' + steps[step].state;
   }
+  const topIcon = $('topIcon');
+  if (topIcon) topIcon.className = 'ticon st-' + (project && project.top ? 'ok' : 'idle');
   // aggregate state for "Compile Design"
   const states = STEP_ORDER.map(s => steps[s].state);
   let agg = 'idle';
@@ -126,7 +138,9 @@ function updateTaskIcons() {
 }
 
 async function runStep(step) {
+  if (!COMPILE_STEPS.includes(step)) return;
   if (!project) { toast('Open a project first (Open Project…)', true); return; }
+  if (!project.top) { toast('Select a top module first (Tasks → Top Module)', true); return; }
   // Prerequisite check: running a later stage while an earlier one is not OK.
   if (step !== 'all') {
     const idx = STEP_ORDER.indexOf(step);
@@ -157,6 +171,9 @@ function wireSubtabs() {
 
 function renderReport() {
   const body = $('reportBody');
+  if (selected === 'top') return renderTopModule(body);
+  if (selected === 'pinplanner') return renderPinPlanner(body);
+  if (selected === 'programmer') return renderProgrammer(body);
   if (selected === 'all') return renderOverview(body);
   if (selected === 'synthesis') return renderSynthesis(body);
   if (selected === 'fitter') return renderFitter(body);
@@ -188,11 +205,10 @@ function renderSynthesis(body) {
 function renderFitter(body) {
   const s = steps.fitter;
   document.querySelectorAll('#reportSubtabs .subtab').forEach(b => b.classList.toggle('active', b.dataset.sub === subtab));
-  if (subtab === 'pinplanner') return renderPinPlanner(body);
   if (!s.summary) { body.innerHTML = `<div class="placeholder">${phText(s.state)}</div>`; return; }
   if (subtab === 'pinout') {
     $('reportSub').textContent = 'Pin-Out';
-    const rows = s.summary.pins.map(p =>
+    const rows = (s.pins || []).map(p =>
       `<tr><td class="mono">${esc(p.pin)}</td><td class="mono">${esc(p.port)}</td>
        <td>${esc(p.resource || '')}</td><td>${esc(p.dir)}</td></tr>`).join('');
     body.innerHTML = `<table class="datatable"><thead>
@@ -200,7 +216,8 @@ function renderFitter(body) {
       <tbody>${rows}</tbody></table>`;
   } else if (subtab === 'timing') {
     $('reportSub').textContent = 'Timing Summary';
-    const t = s.summary.timing;
+    const t = s.timing;
+    if (!t) { body.innerHTML = `<div class="placeholder">No timing data — run Fitter.</div>`; return; }
     const cls = t.pass ? 'pass' : 'fail';
     body.innerHTML = `<div class="timing">
       <div class="tcard ${cls}"><label>Fmax (estimated)</label><b>${t.fmax_mhz.toFixed(2)} MHz</b></div>
@@ -215,13 +232,12 @@ function renderFitter(body) {
 
 function renderAssemble(body) {
   const s = steps.assemble;
-  const info = s.summary || sof;
+  const info = s.sof || sof;
   if (!info) { body.innerHTML = `<div class="placeholder">${phText(s.state)}</div>`; return; }
   body.innerHTML = `<div class="asmfile">
     <div class="row"><label>Programming File</label><span class="mono">${esc(info.name)}</span></div>
     <div class="row"><label>Size</label><span class="mono">${fmtBytes(info.size_bytes)}</span></div>
-    <div class="row"><label>Generated</label><span class="mono">${new Date(info.mtime).toLocaleString()}</span></div>
-    <div class="row"><label>Revision</label><span class="mono">r${info.revision}</span></div>
+    <div class="row"><label>Generated</label><span class="mono">${new Date(info.mtime * 1000).toLocaleString()}</span></div>
     <div class="row muted">Use the Programmer (Tasks pane) to configure the board with this file.</div>
   </div>`;
 }
@@ -265,8 +281,8 @@ function projectPortBits() {
 }
 
 function renderPinPlanner(body) {
-  $('reportSub').textContent = 'Pin Planner';
   if (!project || !boardDef) { body.innerHTML = '<div class="placeholder">Open a project first.</div>'; return; }
+  if (!project.top) { body.innerHTML = '<div class="placeholder">Select a top module first (Tasks → Top Module).</div>'; return; }
   const pins = boardPinList();
   const pinRes = Object.fromEntries(pins.map(p => [p.pin, p.resource]));
   const usedBy = {}; // pin -> port
@@ -368,11 +384,97 @@ function renderMessages() {
   $('msgList').scrollTop = $('msgList').scrollHeight;
 }
 
+// ---------- Tools & Settings ----------
+const TOOL_REQ = { verilator: '≥ 4.0', 'g++': '≥ 7.0', yosys: '≥ 0.9' };
+
+function wireToolsSettings() {
+  $('btnTools').addEventListener('click', openTools);
+  $('btnSettings').addEventListener('click', openSettings);
+  $('toolsClose').addEventListener('click', () => { $('toolsModal').hidden = true; });
+  $('toolsCheck').addEventListener('click', () => runToolsProbe('check'));
+  $('toolsSelftest').addEventListener('click', () => runToolsProbe('selftest'));
+  $('setCancel').addEventListener('click', () => { $('settingsModal').hidden = true; });
+  $('setSave').addEventListener('click', saveSettings);
+}
+
+async function openTools() {
+  $('toolsModal').hidden = false;
+  await runToolsProbe('check');
+}
+
+async function runToolsProbe(mode) {
+  const tbody = $('toolsTableBody');
+  $('toolsCheck').disabled = true;
+  $('toolsSelftest').disabled = true;
+  tbody.innerHTML = '<tr><td colspan="5" class="placeholder">Checking…</td></tr>';
+  try {
+    const d = await apiPost('/api/diagnostics/' + mode, {});
+    tbody.innerHTML = Object.entries(d).map(([name, t]) => `
+      <tr>
+        <td class="mono">${esc(name)}</td>
+        <td>${TOOL_REQ[name] || ''}</td>
+        <td class="mono">${esc(t.path || '—')}</td>
+        <td class="mono">${esc(t.version || '—')}</td>
+        <td class="${t.ok ? 'toolok' : 'toolbad'}">${t.ok ? '✓' : '✗'} ${esc(t.detail || '')}</td>
+      </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="toolbad">${esc(e.message || String(e))}</td></tr>`;
+  } finally {
+    $('toolsCheck').disabled = false;
+    $('toolsSelftest').disabled = false;
+  }
+}
+
+async function openSettings() {
+  $('settingsModal').hidden = false;
+  $('setError').hidden = true;
+  try {
+    const d = await apiGet('/api/settings/tools');
+    $('setVerilator').value = d.overrides.verilator || '';
+    $('setGxx').value = d.overrides['g++'] || '';
+    $('setYosys').value = d.overrides.yosys || '';
+    $('setProvider').textContent = '当前工具链来源 / toolchain provider: ' +
+      (d.provider === 'wsl' ? 'WSL（自动回退）' : d.provider === 'native' ? '本机原生 / native' : '未找到 / none');
+  } catch (e) {
+    $('setProvider').textContent = '';
+  }
+}
+
+async function saveSettings() {
+  $('setError').hidden = true;
+  try {
+    await apiPost('/api/settings/tools', {
+      tools: {
+        verilator: $('setVerilator').value.trim(),
+        'g++': $('setGxx').value.trim(),
+        yosys: $('setYosys').value.trim(),
+      },
+    });
+    $('settingsModal').hidden = true;
+    toast('Settings saved');
+  } catch (e) {
+    $('setError').textContent = e.message || String(e);
+    $('setError').hidden = false;
+  }
+}
+
 // ---------- Open Project ----------
 function wireFsModal() {
   $('btnOpenProject').addEventListener('click', openFsModal);
   $('fsCancel').addEventListener('click', () => { $('openProjModal').hidden = true; });
   $('fsUp').addEventListener('click', () => { if (fsState.parent) loadFs(fsState.parent); });
+  $('fsPath').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') loadFs($('fsPath').value.trim());
+  });
+  $('fsBrowse').addEventListener('click', async () => {
+    try {
+      const r = await apiPost('/api/fs/browse', {});
+      if (r && r.path) await loadFs(r.path);
+    } catch (e) {
+      $('fsError').textContent = e.message || String(e);
+      $('fsError').hidden = false;
+    }
+  });
   $('fsSelect').addEventListener('click', async () => {
     $('fsError').hidden = true;
     try {
@@ -397,7 +499,7 @@ async function loadFs(path) {
   try {
     const data = path ? await apiGet('/api/fs/list?path=' + encodeURIComponent(path)) : await apiGet('/api/fs/home');
     fsState = data;
-    $('fsPath').textContent = data.path;
+    $('fsPath').value = data.path;
     $('fsUp').disabled = !data.parent;
     $('fsList').innerHTML = data.dirs.map(d =>
       `<div class="fsrow" data-path="${esc(d.path)}">
@@ -413,31 +515,89 @@ async function loadFs(path) {
   }
 }
 
-// ---------- Programmer ----------
-function wireProgrammer() {
-  $('progClose').addEventListener('click', () => { $('progModal').hidden = true; });
+// ---------- Top Module ----------
+function renderTopModule(body) {
+  if (!project) { body.innerHTML = '<div class="placeholder">Open a project first (Open Project…).</div>'; return; }
+  const mods = project.modules || [];
+  if (!mods.length) { body.innerHTML = '<div class="placeholder">No Verilog modules found in this project.</div>'; return; }
+  const cur = project.top;
+  body.innerHTML = `<div class="topmod">
+    <p class="muted small">选择本工程的顶层模块 / Select the top-level module（写入 .qsf 的 TOP_LEVEL_ENTITY）：</p>
+    ${mods.map(m => `
+      <label class="toprow ${m.supported === false ? 'disabled' : ''}">
+        <input type="radio" name="topmod" value="${esc(m.name)}" ${m.name === cur ? 'checked' : ''} ${m.supported === false ? 'disabled' : ''}>
+        <span class="mono">${esc(m.name)}</span>
+        <span class="muted small">${esc(m.file || '')} · ${(m.ports || []).length} ports${m.supported === false ? ' · unsupported: ' + esc(m.reason || '') : ''}</span>
+      </label>`).join('')}
+    <div style="margin-top:12px"><button id="topApply" class="btn primary">Set as Top</button></div>
+  </div>`;
+  $('topApply').addEventListener('click', async () => {
+    const sel = body.querySelector('input[name="topmod"]:checked');
+    if (!sel) { toast('Select a module first', true); return; }
+    try {
+      await apiPost('/api/project/top', { top: sel.value });
+      await refreshProject();
+      await refreshStatus();
+      toast('Top module: ' + sel.value);
+      renderTopModule(body);
+    } catch (e) { toast(e.message || String(e), true); }
+  });
+}
+
+// ---------- Programmer (inline in the report area) ----------
+let progExternal = null;   // absolute path of an externally built .sof, if chosen
+
+async function renderProgrammer(body) {
+  if (!project) { body.innerHTML = '<div class="placeholder">Open a project first.</div>'; return; }
+  if (!project.top) { body.innerHTML = '<div class="placeholder">Select a top module first (Tasks → Top Module).</div>'; return; }
+  let files = [];
+  try { files = (await apiGet('/api/program/files')).files || []; } catch (e) { /* ignore */ }
+  const curSof = sof ? sof.name : null;
+  body.innerHTML = `<div class="programmer">
+    <div class="prow"><label>Hardware:</label> USB-Blaster (virtual) <span class="oktext">[Connected]</span> <span class="mono muted">Mode: JTAG</span></div>
+    <div class="prow"><label>File:</label>
+      <select id="progSel" class="mono">
+        ${files.map(f => `<option value="${esc(f.name)}" ${f.name === curSof ? 'selected' : ''}>${esc(f.name)} (${fmtBytes(f.size_bytes)})</option>`).join('')}
+        ${files.length ? '' : '<option value="">(output_files/ is empty — run Assembler first)</option>'}
+      </select>
+      <button id="progBrowse" class="btn small">其他 .sof 文件… / Browse…</button>
+    </div>
+    <div class="prow"><label></label><span id="progFilePath" class="mono muted small">${progExternal ? esc(progExternal) : ''}</span></div>
+    <div class="progress"><div id="progBar" class="progress-bar"></div></div>
+    <div id="progPhase" class="prow phase">Idle</div>
+    <div id="progMsg" class="errtext" hidden></div>
+    <div id="progDone" class="oktext big" hidden>100% — Configuration successful (CONF_DONE).
+      <a id="progGoBoard" href="#">Go to Development Board →</a></div>
+    <div class="prow"><button id="progStart" class="btn primary">Start</button></div>
+  </div>`;
+  const browseExternal = async () => {
+    try {
+      const r = await apiPost('/api/fs/browse', { mode: 'file' });
+      if (r && r.path) {
+        progExternal = r.path;
+        $('progFilePath').textContent = progExternal;
+        $('progSel').value = '';
+      }
+    } catch (e) { toast(e.message || String(e), true); }
+  };
+  $('progBrowse').addEventListener('click', browseExternal);
+  $('progSel').addEventListener('change', () => {
+    progExternal = null;
+    $('progFilePath').textContent = '';
+  });
   $('progGoBoard').addEventListener('click', (ev) => { ev.preventDefault(); location.href = pageUrl('board.html'); });
   $('progStart').addEventListener('click', startProgram);
 }
-async function openProgrammer() {
-  if (!project) { toast('Open a project first (Open Project…)', true); return; }
-  $('progModal').hidden = false;
-  $('progMsg').hidden = true;
-  $('progDone').hidden = true;
-  $('progBar').style.width = '0%';
-  $('progPhase').textContent = 'Idle';
-  programming = false;
-  $('progStart').disabled = false;
-  await refreshStatus();
-  $('progFile').textContent = sof ? sof.name : '(no .sof file — run Assembler first)';
-}
+
 async function startProgram() {
   $('progMsg').hidden = true;
   $('progDone').hidden = true;
   programming = true;
   $('progStart').disabled = true;
+  const sel = $('progSel');
+  const sofArg = progExternal || (sel && sel.value) || null;
   try {
-    await apiPost('/api/program', {});
+    await apiPost('/api/program', sofArg ? { sof: sofArg } : {});
   } catch (e) {
     // e.g. BOARD_OFF: board not powered — show the backend message as-is
     $('progMsg').textContent = e.message || String(e);
@@ -448,8 +608,10 @@ async function startProgram() {
   }
 }
 function programProgress(m) {
-  if ($('progModal').hidden) return;
-  $('progBar').style.width = (m.percent || 0) + '%';
+  if (selected !== 'programmer') return;
+  const bar = $('progBar');
+  if (!bar) return;
+  bar.style.width = (m.percent || 0) + '%';
   $('progPhase').textContent = m.phase + (m.phase === 'Done' ? '' : '…');
   if (m.phase === 'Done') {
     programming = false;
@@ -462,15 +624,13 @@ function programProgress(m) {
 async function refreshProject() {
   try {
     project = await apiGet('/api/project');
-    $('projName').textContent = project.name;
     $('projPath').textContent = project.path;
-    $('projTop').textContent = project.top;
     try { assignments = (await apiGet('/api/qsf')).assignments || {}; } catch (e) { assignments = {}; }
+    updateTaskIcons();
   } catch (e) {
     project = null;
-    $('projName').textContent = '—';
     $('projPath').textContent = '—';
-    $('projTop').textContent = '—';
+    updateTaskIcons();
   }
 }
 async function refreshStatus() {

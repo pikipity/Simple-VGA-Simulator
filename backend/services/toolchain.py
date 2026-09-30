@@ -20,6 +20,10 @@ import shutil
 import subprocess
 import sys
 
+import config
+
+TOOL_KEYS = ("verilator", "g++", "yosys")
+
 _PROVIDER = None  # 'native' | 'wsl' | None (not probed yet)
 _WIN_ABS = re.compile(r"^([A-Za-z]):[\\/]")
 
@@ -36,6 +40,22 @@ def _run_probe(argv, timeout=15):
         return -1, ""
 
 
+def get_overrides():
+    """User-specified tool paths from settings.json (empty = auto)."""
+    tools = config.load_settings().get("tools") or {}
+    return {k: v for k, v in tools.items() if k in TOOL_KEYS and v}
+
+
+def resolve(tool):
+    """Explicit override path if set, else native PATH lookup (None if
+    absent). Only meaningful for the native provider; WSL tools are
+    resolved inside WSL by name."""
+    override = get_overrides().get(tool)
+    if override:
+        return override
+    return shutil.which(tool)
+
+
 def detect(force=False):
     """Return 'native' | 'wsl' | None (no usable toolchain found)."""
     global _PROVIDER
@@ -44,7 +64,11 @@ def detect(force=False):
     if sys.platform != "win32":
         _PROVIDER = "native"
         return _PROVIDER
-    if all(shutil.which(t) for t in ("verilator", "g++", "yosys")):
+    if get_overrides():
+        # explicit user paths mean: drive the native toolchain
+        _PROVIDER = "native"
+        return _PROVIDER
+    if all(shutil.which(t) for t in TOOL_KEYS):
         _PROVIDER = "native"
         return _PROVIDER
     rc, _ = _run_probe(
@@ -74,6 +98,10 @@ def wrap_cmd(cmd, cwd=None):
         if cwd:
             inner = "cd %s && %s" % (shlex.quote(win_to_wsl(cwd)), inner)
         return ["wsl", "bash", "-lc", inner], None
+    cmd = list(cmd)
+    resolved = resolve(cmd[0])
+    if resolved:
+        cmd[0] = resolved
     return cmd, cwd
 
 

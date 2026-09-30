@@ -177,6 +177,52 @@ def scan_project(path):
     return {"files": files, "modules": modules, "top_candidates": candidates}
 
 
+def browse_folder():
+    """Open the OS-native folder picker; return the chosen path or None.
+
+    tkinter is stdlib but not guaranteed everywhere (Ubuntu needs the
+    python3-tk package); any failure returns None and the frontend keeps
+    using the list browser.
+    """
+    return _native_browse(folder=True)
+
+
+def browse_file(patterns=()):
+    """OS-native file picker (e.g. choosing a .sof built elsewhere)."""
+    return _native_browse(folder=False, patterns=patterns)
+
+
+def _native_browse(folder, patterns=()):
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except Exception:
+        return None
+    root = None
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            root.attributes("-topmost", True)
+        except Exception:
+            pass
+        if folder:
+            path = filedialog.askdirectory()
+        else:
+            filetypes = [("Programming files", " ".join(patterns))] \
+                if patterns else []
+            path = filedialog.askopenfilename(filetypes=filetypes)
+        return path or None
+    except Exception:
+        return None
+    finally:
+        if root is not None:
+            try:
+                root.destroy()
+            except Exception:
+                pass
+
+
 def list_dir(path):
     """Directory browser payload: subdirs (each with .v count and qsf
     flag) + current dir's own .v/.qsf inventory."""

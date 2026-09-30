@@ -88,13 +88,17 @@ def _input_hash(proj_path, files, qsf_text, top):
 
 
 class BuildService:
-    def __init__(self, get_project, emit_log, emit_step):
+    def __init__(self, get_project, emit_log, emit_step,
+                 before_sof_replace=None):
         """get_project() returns the live project context dict or None;
         emit_log(step, level, text) and emit_step(step, state, summary)
-        fan out to WebSocket clients."""
+        fan out to WebSocket clients. before_sof_replace(path) is called
+        just before a freshly built .sof replaces the old one (the board
+        uses it to unload a running configuration)."""
         self._get_project = get_project
         self._emit_log = emit_log
         self._emit_step = emit_step
+        self._before_sof_replace = before_sof_replace
         self._lock = threading.Lock()
         self._running = set()           # steps currently executing
         self._running_lock = threading.Lock()
@@ -182,10 +186,8 @@ class BuildService:
             sof_path = os.path.join(proj["path"], "output_files", sof_name)
             if os.path.isfile(sof_path):
                 st = os.stat(sof_path)
-                m = re.search(r"_r(\d+)\.sof", sof_name)
                 sof = {"name": sof_name, "size_bytes": st.st_size,
-                       "mtime": st.st_mtime,
-                       "revision": int(m.group(1)) if m else None}
+                       "mtime": st.st_mtime}
         return {"steps": out, "sof": sof}
 
     # ---- helpers ------------------------------------------------------
@@ -217,19 +219,23 @@ class BuildService:
             return names[0]
         raise ProjectError("NO_MODULE", "工程中没有找到模块")
 
-    def _set_step(self, proj, step, state, summary, state_hash=None):
+    def _set_step(self, proj, step, state, summary, state_hash=None,
+                  extra=None):
         store = self._load_state(proj)
-        store["steps"][step] = {
+        record = {
             "state": state,
             "time": datetime.datetime.now().isoformat(timespec="seconds"),
             "summary": summary,
         }
+        if extra:
+            record.update(extra)
+        store["steps"][step] = record
         if state_hash:
             store["steps"][step]["hash"] = state_hash
         self._save_state(proj, store)
         with self._running_lock:
             self._running.discard(step)
-        self._emit_step(step, state, summary)
+        self._emit_step(step, state, summary, extra)
         return store
 
     def _begin_step(self, step):
@@ -574,9 +580,20 @@ class BuildService:
                            % (fmax_mhz, slack_ns))
             report += ("\n\nCritical Warning: Timing requirements not met "
                        "(estimated, for reference only)")
+        pins = [{"pin": a["pin"], "port": a["port"],
+                 "resource": self.pin2wrapper.get(a["pin"], ""),
+                 "dir": self.pin_dir.get(a["pin"], "")}
+                for a in sorted(valid, key=lambda x: x["pin"])]
+        timing_info = None
+        if fmax_mhz is not None:
+            timing_info = {"fmax_mhz": round(fmax_mhz, 2),
+                           "required_mhz": 50.0,
+                           "slack_ns": round(slack_ns, 3),
+                           "pass": slack_ns >= 0, "depth": depth}
         state_hash = _input_hash(proj["path"], scan["files"],
                                  self._read_qsf(proj), top)
-        self._set_step(proj, "fitter", "ok", report, state_hash)
+        self._set_step(proj, "fitter", "ok", report, state_hash,
+                       extra={"pins": pins, "timing": timing_info})
         return {"assignments": len(valid),
                 "fmax_mhz": None if fmax_mhz is None else round(fmax_mhz, 2),
                 "slack_ns": None if slack_ns is None else round(slack_ns, 3),
@@ -655,12 +672,6 @@ class BuildService:
             tpl = fh.read()
         return tpl.replace("{{instantiation}}", inst), warnings
 
-    def _next_revision(self, out_dir, top):
-        pat = re.compile(r"^%s_r(\d+)\.sof(?:\.exe)?$" % re.escape(top))
-        revs = [int(m.group(1)) for f in os.listdir(out_dir)
-                for m in [pat.match(f)] if m]
-        return max(revs) + 1 if revs else 1
-
     def _verilator_root(self):
         argv, cwd = toolchain.wrap_cmd(["verilator", "-getenv", "VERILATOR_ROOT"])
         try:
@@ -711,8 +722,7 @@ class BuildService:
             summary = "Assembler failed at verilator stage"
             self._set_step(proj, "assemble", "fail", summary)
             raise ProjectError("ASSEMBLE_FAIL", summary + "（详见 Messages）")
-        rev = self._next_revision(out_dir, top)
-        sof_name = "%s_r%d.sof%s" % (top, rev, toolchain.exe_suffix())
+        sof_name = "%s.sof%s" % (top, toolchain.exe_suffix())
         sof_path = os.path.join(out_dir, sof_name)
         if not os.path.exists(config.SIM_CPP):
             self._emit_log("assemble", "warn",
@@ -725,11 +735,12 @@ class BuildService:
             store = self._set_step(proj, "assemble", "ok", summary, state_hash)
             store["sof"] = None
             self._save_state(proj, store)
-            return {"sof": None, "rev": rev, "summary": summary,
+            return {"sof": None, "summary": summary,
                     "wrapper": wrapper_path}
         vroot = self._verilator_root()
         model_cpps = sorted(glob.glob(
             os.path.join(obj_dir, "VDevelopmentBoard*.cpp")))
+        new_path = sof_path + ".new"
         cmd = (["g++", "-O3",
                 "-I", obj_dir,
                 "-I", toolchain.join(vroot, "include"),
@@ -737,16 +748,23 @@ class BuildService:
                 os.path.abspath(config.SIM_CPP)]
                + model_cpps
                + [toolchain.join(vroot, "include", "verilated.cpp"),
-                  "-o", sof_path])
+                  "-o", new_path])
         if toolchain.needs_pthread():
             cmd.append("-pthread")
         rc, _ = self._run_streaming("assemble", cmd, build_dir)
-        if rc != 0 or not os.path.exists(sof_path):
+        if rc != 0 or not os.path.exists(new_path):
             summary = "Assembler failed at g++ stage"
             self._set_step(proj, "assemble", "fail", summary)
             raise ProjectError("ASSEMBLE_FAIL", summary + "（详见 Messages）")
+        # The .sof name is stable across rebuilds; unload a board running
+        # the old image before replacing the file (Windows locks running
+        # executables; POSIX would keep the old inode — either way the
+        # board must be re-programmed after a rebuild).
+        if self._before_sof_replace:
+            self._before_sof_replace(sof_path)
+        os.replace(new_path, sof_path)
         meta = {
-            "name": sof_name, "top": top, "revision": rev,
+            "name": sof_name, "top": top,
             "time": datetime.datetime.now().isoformat(timespec="seconds"),
             "family": self.board.get("family"),
             "device": self.board.get("device"),
@@ -755,14 +773,18 @@ class BuildService:
         }
         with open(sof_path + ".json", "w", encoding="utf-8") as fh:
             json.dump(meta, fh, indent=1)
-        summary = ("Assembler: generated %s (revision %d, %d bytes)"
-                   % (sof_name, rev, os.path.getsize(sof_path)))
+        summary = ("Assembler: generated %s (%d bytes)"
+                   % (sof_name, os.path.getsize(sof_path)))
         state_hash = _input_hash(proj["path"], scan["files"],
                                  self._read_qsf(proj), top)
-        store = self._set_step(proj, "assemble", "ok", summary, state_hash)
+        sof_info = {"name": sof_name,
+                    "size_bytes": os.path.getsize(sof_path),
+                    "mtime": os.path.getmtime(sof_path)}
+        store = self._set_step(proj, "assemble", "ok", summary, state_hash,
+                               extra={"sof": sof_info})
         store["sof"] = sof_name
         self._save_state(proj, store)
-        return {"sof": sof_name, "rev": rev, "summary": summary,
+        return {"sof": sof_name, "summary": summary,
                 "path": sof_path}
 
     # ---- Compile All ----------------------------------------------------

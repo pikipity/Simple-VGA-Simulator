@@ -142,11 +142,11 @@ const state = {
     assemble:  { state: 'idle', summary: null },
   },
   sof: null,
-  sofRev: 0,
   running: false,
   programming: false,
-  board: { power: false, configured: false, conf_done: false, sim_running: false, ideal: false, rev: 0 },
+  board: { power: false, configured: false, conf_done: false, sim_running: false, ideal: false },
   buttons: [1, 1, 1, 1, 1], // SW1..SW5, 1=released 0=pressed
+  toolOverrides: {},
 };
 
 const clients = new Set();
@@ -168,7 +168,7 @@ const bc = ('BroadcastChannel' in window) ? new BroadcastChannel(CH) : null;
     if (s.project) state.project = s.project;
     if (s.qsf) state.qsf = s.qsf;
     if (s.steps) state.steps = s.steps;
-    if (s.sof) { state.sof = s.sof; state.sofRev = s.sofRev || 0; }
+    if (s.sof) { state.sof = s.sof; }
     if (s.board) Object.assign(state.board, s.board);
     if (s.buttons) state.buttons = s.buttons;
   } catch (e) { /* corrupted state: start fresh */ }
@@ -176,7 +176,7 @@ const bc = ('BroadcastChannel' in window) ? new BroadcastChannel(CH) : null;
 
 function stateSnapshot() {
   return { project: state.project, qsf: state.qsf, steps: state.steps,
-    sof: state.sof, sofRev: state.sofRev, board: state.board, buttons: state.buttons };
+    sof: state.sof, board: state.board, buttons: state.buttons };
 }
 function persist() {
   try { localStorage.setItem(CH, JSON.stringify({ ts: Date.now(), ...stateSnapshot() })); } catch (e) { /* noop */ }
@@ -188,16 +188,16 @@ if (bc) bc.onmessage = (ev) => {
     for (const c of clients) { try { c.onMsg && c.onMsg(d.payload); } catch (e) { /* noop */ } }
   } else if (d.kind === 'state') {
     state.project = d.state.project; state.qsf = d.state.qsf; state.steps = d.state.steps;
-    state.sof = d.state.sof; state.sofRev = d.state.sofRev; state.buttons = d.state.buttons;
+    state.sof = d.state.sof; state.buttons = d.state.buttons;
     Object.assign(state.board, d.state.board);
   }
 };
 
 function bcastBoard() { persist(); broadcast({ type: 'board', ...state.board }); }
-function setStep(step, st, summary) {
-  state.steps[step] = { state: st, summary: summary ?? state.steps[step].summary };
+function setStep(step, st, summary, extra) {
+  state.steps[step] = { state: st, summary: summary ?? state.steps[step].summary, ...(extra || {}) };
   persist();
-  broadcast({ type: 'step', step, state: st, summary: state.steps[step].summary });
+  broadcast({ type: 'step', step, state: st, summary: state.steps[step].summary, ...(extra || {}) });
 }
 function log(step, level, text) { broadcast({ type: 'log', step, level, text }); }
 function markStale(step) { if (state.steps[step].state === 'ok') setStep(step, 'stale'); }
@@ -277,15 +277,14 @@ async function runFitter() {
   const fmax = 108.4 + Math.round(Math.random() * 400) / 10;
   const period = 1000 / fmax;
   const slack = 20 - period;
-  const summary = {
-    pins: Object.entries(state.qsf).map(([port, pin]) => ({
-      pin: 'PIN_' + pin, port, resource: pinResource(pin), dir: (portBits().find(b => b.ref === port) || {}).dir || '?',
-    })),
-    timing: { fmax_mhz: fmax, required_mhz: 50, period_ns: +period.toFixed(2), slack_ns: +slack.toFixed(2), pass: slack >= 0 },
-  };
-  if (!summary.timing.pass) log('fitter', 'error', 'Error: Setup timing requirement not met (slack ' + summary.timing.slack_ns + ' ns)');
+  const pins = Object.entries(state.qsf).map(([port, pin]) => ({
+    pin: 'PIN_' + pin, port, resource: pinResource(pin), dir: (portBits().find(b => b.ref === port) || {}).dir || '?',
+  }));
+  const timing = { fmax_mhz: fmax, required_mhz: 50, period_ns: +period.toFixed(2), slack_ns: +slack.toFixed(2), pass: slack >= 0 };
+  if (!timing.pass) log('fitter', 'error', 'Error: Setup timing requirement not met (slack ' + timing.slack_ns + ' ns)');
   log('fitter', 'info', 'Info: Fitter was successful');
-  setStep('fitter', 'ok', summary);
+  const text = `Fitter: placed ${pins.length} pins; estimated Fmax ${fmax} MHz, slack ${slack.toFixed(2)} ns`;
+  setStep('fitter', 'ok', text, { pins, timing });
   markStale('assemble');
 }
 
@@ -295,16 +294,14 @@ async function runAssemble() {
   await sleep(700);
   log('assemble', 'info', 'Info: Generating SRAM object file');
   await sleep(700);
-  state.sofRev += 1;
   state.sof = {
-    name: `output_files/${state.project.top}_r${state.sofRev}.sof`,
-    size_bytes: 2867200 + state.sofRev * 977,
-    mtime: new Date().toISOString(),
-    revision: state.sofRev,
+    name: `output_files/${state.project.top}.sof`,
+    size_bytes: 2867200,
+    mtime: Date.now() / 1000,
   };
-  const summary = { ...state.sof };
+  const summary = `Assembler: generated ${state.sof.name} (${state.sof.size_bytes} bytes)`;
   log('assemble', 'info', `Info: Generated programming file ${state.sof.name}`);
-  setStep('assemble', 'ok', summary);
+  setStep('assemble', 'ok', summary, { sof: { ...state.sof } });
 }
 
 async function runStep(step) {
@@ -333,7 +330,6 @@ async function runProgram() {
     await sleep(phase === 'Verifying' ? 400 : 450);
   }
   state.board.configured = true; state.board.conf_done = true; state.board.sim_running = true;
-  state.board.rev = state.sofRev;
   bcastBoard();
   broadcast({ type: 'program', phase: 'Done', percent: 100 });
   state.programming = false;
@@ -422,6 +418,13 @@ export const mockImpl = {
       return { assignments: { ...state.qsf } };
     }
     if (path === '/api/board') return loadBoardDef();
+    if (path === '/api/settings/tools') {
+      return { overrides: { ...state.toolOverrides }, provider: 'wsl',
+        resolved: { verilator: '/usr/bin/verilator', 'g++': '/usr/bin/g++', yosys: '/usr/bin/yosys' } };
+    }
+    if (path === '/api/program/files') {
+      return { files: state.sof ? [state.sof] : [] };
+    }
     if (path === '/api/compile/status') {
       return {
         steps: JSON.parse(JSON.stringify(state.steps)),
@@ -434,6 +437,33 @@ export const mockImpl = {
   async apiPost(path, body) {
     body = body || {};
     if (path === '/api/heartbeat') return { ts: Date.now() };
+    if (path === '/api/project/top') {
+      if (!state.project) throw { code: 'NO_PROJECT', message: 'No project is open' };
+      state.project.top = body.top;
+      state.project.ports = state.project._tpl ? state.project._tpl.ports : [];
+      persist();
+      log('project', 'info', `Info: Top-level Entity Name set to "${body.top}"`);
+      return state.project;
+    }
+    if (path === '/api/fs/browse') {
+      await sleep(300);
+      if (body.mode === 'file') return { path: 'D:/shared/lab5/ColorBar.sof' };
+      return { path: null };
+    }
+    if (path === '/api/diagnostics/check' || path === '/api/diagnostics/selftest') {
+      await sleep(path.endsWith('selftest') ? 1200 : 300);
+      const suffix = path.endsWith('selftest') ? 'self-check ok (via WSL)' : 'version ok (via WSL)';
+      return {
+        verilator: { path: '/usr/bin/verilator', version: '4.038', ok: true, detail: suffix },
+        'g++': { path: '/usr/bin/g++', version: '11.4.0', ok: true, detail: suffix },
+        yosys: { path: '/usr/bin/yosys', version: '0.9', ok: true, detail: suffix },
+      };
+    }
+    if (path === '/api/settings/tools') {
+      state.toolOverrides = Object.fromEntries(Object.entries(body.tools || {}).filter(([, v]) => v));
+      return { overrides: { ...state.toolOverrides }, provider: 'wsl',
+        resolved: { verilator: '/usr/bin/verilator', 'g++': '/usr/bin/g++', yosys: '/usr/bin/yosys' } };
+    }
     if (path === '/api/project/open') {
       await sleep(150);
       const meta = FS_META.get(body.path);
@@ -441,9 +471,13 @@ export const mockImpl = {
       if (!meta || !meta.v) throw { code: 'NO_RTL', message: 'This folder has no .v files. Choose a project folder.' };
       const tpl = PROJECTS[meta.top];
       state.project = {
-        path: body.path, name: body.path.split('/').pop(), top: tpl.top,
+        path: body.path, name: body.path.split('/').pop(), top: null,
         device: 'EP4CE10F17C8', family: 'Cyclone IV E',
-        ports: tpl.ports, files: tpl.ports.length ? ['rtl/' + tpl.top + '.v'] : [],
+        ports: [], files: tpl.ports.length ? ['rtl/' + tpl.top + '.v'] : [],
+        modules: [{ name: tpl.top, file: tpl.top + '.v', supported: true, ports: tpl.ports },
+                  { name: 'vga_ctrl', file: 'vga_ctrl.v', supported: true, ports: [] },
+                  { name: 'vga_pic', file: 'vga_pic.v', supported: true, ports: [] }],
+        _tpl: tpl,
       };
       state.qsf = defaultQsf(tpl.ports);
       state.sof = null; state.sofRev = 0;

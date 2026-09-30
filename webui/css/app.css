@@ -227,7 +227,15 @@ body.page-ide { height: 100vh; display: flex; flex-direction: column; background
 
 .fsbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .fsbar .mono { background: #f0f1f3; border: 1px solid #dfe2e7; border-radius: 3px; padding: 3px 8px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fsbar input.fsinput { font-family: inherit; font-size: 12px; color: #333; outline: none; }
+.fsbar input.fsinput:focus { border-color: #2f6db3; background: #fff; }
 .fslist { border: 1px solid #dfe2e7; border-radius: 4px; height: 250px; overflow: auto; }
+.toolok { color: #1a7f37; }
+.toolbad { color: #c42b2b; }
+.setrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.setrow label { width: 90px; font-size: 12px; }
+.setrow input { flex: 1; border: 1px solid #dfe2e7; border-radius: 3px; padding: 5px 8px; font-size: 12px; }
+.setrow input:focus { border-color: #2f6db3; outline: none; }
 .fsrow { display: flex; align-items: center; gap: 9px; padding: 7px 10px; cursor: pointer; user-select: none; }
 .fsrow:hover { background: #e8eef7; }
 .fsname { font-weight: 600; }
@@ -341,3 +349,16 @@ body.page-board {
 .nosignal-bg { fill: #05070e; }
 .nosignal-box { fill: #10131c; stroke: #4a5468; stroke-width: 1.5; }
 .nosignal-text { fill: #e8ecf4; font: 700 24px "Segoe UI", sans-serif; letter-spacing: 2px; }
+
+/* Top Module picker + inline Programmer */
+.topmod { padding: 8px; }
+.toprow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #dfe2e7; border-radius: 4px; margin: 6px 0; cursor: pointer; background: #fff; }
+.toprow:hover { border-color: #2f6db3; }
+.toprow.disabled { opacity: .5; cursor: not-allowed; }
+.programmer { padding: 12px; max-width: 720px; }
+.programmer .prow { margin: 10px 0; display: flex; align-items: center; gap: 10px; }
+.programmer .prow label { width: 90px; font-weight: 600; font-size: 12px; color: #555; }
+.programmer select { min-width: 320px; padding: 4px 6px; }
+.programmer .progress { margin: 14px 0 6px; }
+.programmer .phase { font-weight: 600; }
+.oktext.big { font-size: 14px; margin: 8px 0; }

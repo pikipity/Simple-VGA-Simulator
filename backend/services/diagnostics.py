@@ -24,7 +24,7 @@ _cache_lock = threading.Lock()
 
 _VERILATOR_SRC = "module t(input wire a, output wire y); assign y = ~a; endmodule\n"
 _YOSYS_SCRIPT = "read_verilog t.v; hierarchy -top t; proc; stat"
-_GXX_SRC = "int main() { return 0; }\n"
+_GXX_SRC = '#include <cstdio>\nint main(){std::puts("VGA_BOARD_GXX_OK");return 0;}\n'
 
 
 def _run(cmd, cwd=None, timeout=60, input_text=None):
@@ -46,14 +46,16 @@ def _version_tuple(text):
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
-def _probe(name, version_cmd, version_re, minimum, selfcheck):
+def _probe(name, version_cmd, version_re, minimum, selfcheck,
+           with_selfcheck):
     """Return {path, version, ok, detail} for one tool."""
     provider = toolchain.detect()
+    override = toolchain.get_overrides().get(name)
     if provider == "wsl":
         rc, out = _run(["wsl", "bash", "-lc", "command -v %s" % name])
         path = out.strip().splitlines()[0] if rc == 0 and out.strip() else None
     else:
-        path = shutil.which(name)
+        path = toolchain.resolve(name)
     result = {"path": path, "version": None, "ok": False, "detail": ""}
     if not path:
         result["detail"] = ("not found (native PATH or WSL)"
@@ -75,12 +77,22 @@ def _probe(name, version_cmd, version_re, minimum, selfcheck):
         result["detail"] = "version %s < required %s" % (
             version, ".".join(str(x) for x in minimum))
         return result
+    if not with_selfcheck:
+        result["ok"] = True
+        result["detail"] = "version ok" + _suffix(provider, override)
+        return result
     ok, detail = selfcheck()
-    if ok and provider == "wsl":
-        detail += " (via WSL)"
     result["ok"] = ok
-    result["detail"] = detail
+    result["detail"] = detail + _suffix(provider, override)
     return result
+
+
+def _suffix(provider, override):
+    if override:
+        return " (override)"
+    if provider == "wsl":
+        return " (via WSL)"
+    return ""
 
 
 def _selfcheck_verilator():
@@ -114,13 +126,27 @@ def _selfcheck_gxx():
         exe = os.path.join(tmp, "t" + toolchain.exe_suffix())
         argv, cwd = toolchain.wrap_cmd(["g++", "-x", "c++", "-", "-o", exe])
         rc, out = _run(argv, cwd=cwd, input_text=_GXX_SRC)
-        if rc == 0 and os.path.exists(exe):
-            return True, "self-check ok"
-        return False, "self-check failed: " + (out.strip().splitlines()[-1][:120] if out.strip() else "")
+        if rc != 0 or not os.path.exists(exe):
+            return False, "self-check failed (compile): " + (
+                out.strip().splitlines()[-1][:120] if out.strip() else "")
+        argv, cwd = toolchain.wrap_cmd([exe])
+        rc, out = _run(argv, cwd=cwd)
+        if rc == 0 and "VGA_BOARD_GXX_OK" in (out or ""):
+            return True, "self-check ok (compile+run)"
+        return False, "self-check failed (run): rc=%s" % rc
 
 
-def probe_all(force=False):
-    """Probe verilator, g++ and yosys. Returns {tool: {path, version, ok, detail}}."""
+def run_quick(cmd, timeout=15):
+    """Public thin wrapper around _run for one-shot external commands."""
+    return _run(cmd, timeout=timeout)
+
+
+def probe_all(force=False, with_selfcheck=True):
+    """Probe verilator, g++ and yosys. Returns {tool: {path, version, ok, detail}}.
+
+    with_selfcheck=False is the fast "locate + version" check (the Tools
+    dialog's Check button); True additionally compiles/runs a tiny program
+    per tool (the Self-Test button)."""
     if force:
         toolchain.detect(force=True)
     with _cache_lock:
@@ -130,15 +156,15 @@ def probe_all(force=False):
             "verilator": _probe(
                 "verilator", ["verilator", "--version"],
                 r"Verilator\s+(\d+\.\d+)", config.MIN_VERILATOR,
-                _selfcheck_verilator),
+                _selfcheck_verilator, with_selfcheck),
             "g++": _probe(
                 "g++", ["g++", "--version"],
                 r"g\+\+.*?(\d+\.\d+(?:\.\d+)?)", config.MIN_GXX,
-                _selfcheck_gxx),
+                _selfcheck_gxx, with_selfcheck),
             "yosys": _probe(
                 "yosys", ["yosys", "-V"],
                 r"Yosys\s+(\d+\.\d+)", config.MIN_YOSYS,
-                _selfcheck_yosys),
+                _selfcheck_yosys, with_selfcheck),
         }
         _cache["time"] = time.time()
         _cache["result"] = result

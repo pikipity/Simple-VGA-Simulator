@@ -5,9 +5,11 @@ Security notes:
 - VGA_BOARD_PORT / VGA_BOARD_TOKEN / VGA_BOARD_NO_BROWSER /
   VGA_BOARD_WATCHDOG_TIMEOUT are test/development hooks; production
   launches never set them.
-- DATA_DIR holds only the application log. Build artifacts live inside
-  the student project directory (build/ and output_files/).
+- app.log and settings.json live next to the executable (frozen) or at
+  the repo root (source runs); build artifacts live inside the student
+  project directory (build/ and output_files/).
 """
+import json
 import os
 import secrets
 import sys
@@ -30,17 +32,18 @@ WEBUI_DIR = os.path.join(REPO_ROOT, "webui")
 
 
 def data_dir():
-    """Per-user data directory for app.log (platform conventions)."""
+    """Directory for app.log.
+
+    Placed next to the executable (PyInstaller bundle) or at the repo
+    root (source runs) so users can actually find it when something
+    goes wrong. VGA_BOARD_DATA_DIR overrides (tests/CI).
+    """
     override = os.environ.get("VGA_BOARD_DATA_DIR")
     if override:
         return override
-    home = os.path.expanduser("~")
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming"))
-        return os.path.join(base, "vga-board")
-    if sys.platform == "darwin":
-        return os.path.join(home, "Library", "Application Support", "vga-board")
-    return os.path.join(home, ".local", "share", "vga-board")
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return REPO_ROOT
 
 
 def listen_port():
@@ -61,3 +64,24 @@ def watchdog_timeout():
         return float(os.environ.get("VGA_BOARD_WATCHDOG_TIMEOUT", "120"))
     except ValueError:
         return 120.0
+
+
+def settings_path():
+    return os.path.join(data_dir(), "settings.json")
+
+
+def load_settings():
+    try:
+        with open(settings_path(), "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_settings(data):
+    os.makedirs(data_dir(), exist_ok=True)
+    tmp = settings_path() + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=1)
+    os.replace(tmp, settings_path())

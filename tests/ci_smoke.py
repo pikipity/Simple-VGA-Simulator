@@ -131,7 +131,8 @@ def main():
           all(s["state"] == "ok" for s in st.values()),
           str({k: v["state"] for k, v in st.items()}))
     sof = call(base, tok, "/api/compile/status")["data"]["sof"]
-    check("sof produced", sof is not None, str(sof))
+    check("sof produced", sof is not None and sof["name"] == "Simple_VGA.sof",
+          str(sof))
 
     # program guard: board is OFF by default
     r = call(base, tok, "/api/program", "POST", {})
@@ -170,7 +171,8 @@ def main():
             break
         time.sleep(3)
     sof2 = call(base, tok, "/api/compile/status")["data"]["sof"]
-    check("revision bumped", sof2["revision"] == sof["revision"] + 1,
+    check("sof overwritten", sof2["name"] == sof["name"]
+          and sof2["mtime"] > sof["mtime"],
           "%s -> %s" % (sof["name"], sof2["name"]))
     r = call(base, tok, "/api/program", "POST", {})
     check("reprogram ok", r["ok"])

@@ -292,7 +292,7 @@ function applyState() {
   if (!state.power) setLeds(0);
   if (!state.power) hint('Board is OFF — flip the POWER switch on the board.');
   else if (!state.configured) hint('Powered, but FPGA not configured — use the Programmer in the EDA Tool.');
-  else hint(`Design running (rev ${state.rev}) — press and hold SW1..SW5 (or keys 1-5).`);
+  else hint('Design running — press and hold SW1..SW5 (or keys 1-5).');
 }
 
 function hint(text, isErr) {

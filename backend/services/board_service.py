@@ -43,7 +43,6 @@ class BoardService:
         self.configured = False
         self.conf_done = False
         self.ideal = False
-        self.rev = None
         self._sof = None
         self._proc = None
         self._ready = threading.Event()
@@ -59,7 +58,6 @@ class BoardService:
                 "conf_done": self.conf_done,
                 "sim_running": self._proc is not None and self._proc.poll() is None,
                 "ideal": self.ideal,
-                "rev": self.rev,
             }
 
     def _push_state(self):
@@ -84,9 +82,30 @@ class BoardService:
                 self.configured = False
                 self.conf_done = False
                 self._sof = None
-                self.rev = None
         self._push_state()
         return self.state()
+
+    # ---- rebuild unload -------------------------------------------------
+
+    def unload_if_running(self, sof_path):
+        """Called when a rebuilt .sof is about to replace the file. If the
+        board is running that image, unload it (CONF_DONE off); the board
+        must be re-programmed afterwards. Returns True if unloaded."""
+        with self._lock:
+            running_this = (self._proc is not None
+                            and self._sof == sof_path)
+        if not running_this:
+            return False
+        self._emit_log("board", "warn",
+                       "设计已重新编译，开发板上的旧配置已卸载——请重新运行 Programmer")
+        log.info("design rebuilt; unloading running configuration")
+        self._kill_sim()
+        with self._lock:
+            self.configured = False
+            self.conf_done = False
+            self._sof = None
+        self._push_state()
+        return True
 
     # ---- simulator process --------------------------------------------
 
@@ -254,8 +273,6 @@ class BoardService:
             self.configured = True
             self.conf_done = True
             self._sof = sof_path
-            m = re.search(r"_r(\d+)\.sof", os.path.basename(sof_path))
-            self.rev = int(m.group(1)) if m else None
         progress("done", 100)
         self._push_state()
         return self.state()

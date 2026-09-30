@@ -45,7 +45,11 @@ def parse(text):
 
 
 def template(project_name, top):
-    """Default QSF for a freshly opened project."""
+    """Default QSF for a freshly opened project.
+
+    TOP_LEVEL_ENTITY is intentionally left commented out: the student
+    must pick the top module explicitly (Tasks → Top Module), which is
+    also what a real Quartus project requires."""
     return (
         "# ------------------------------------------------------------\n"
         "# Quartus Settings File - %s\n"
@@ -53,7 +57,8 @@ def template(project_name, top):
         "# ------------------------------------------------------------\n"
         'set_global_assignment -name FAMILY "Cyclone IV E"\n'
         "set_global_assignment -name DEVICE EP4CE10F17C8\n"
-        "set_global_assignment -name TOP_LEVEL_ENTITY %s\n"
+        "# Select the top module first (Tasks -> Top Module), e.g.:\n"
+        "# set_global_assignment -name TOP_LEVEL_ENTITY %s\n"
         "\n"
         "# Pin assignments (edit here or via Pin Planner):\n"
         "#   set_location_assignment PIN_E1  -to clk        # 50MHz clock\n"

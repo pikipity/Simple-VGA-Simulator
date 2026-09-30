@@ -20,7 +20,7 @@ from urllib.parse import urlparse, parse_qs
 import config
 from . import ws as wsmod
 from .services import build_service, board_service, diagnostics, \
-    project_service, qsf_service
+    project_service, qsf_service, toolchain
 from .services.project_service import ProjectError
 
 log = logging.getLogger("app")
@@ -68,14 +68,15 @@ class Backend:
         self._clients_lock = threading.Lock()
         self._project = None
         self._project_lock = threading.Lock()
-        self.build = build_service.BuildService(
-            get_project=lambda: self._project,
-            emit_log=self.emit_log,
-            emit_step=self.emit_step)
         self.board = board_service.BoardService(
             broadcast_state=self.broadcast_json,
             broadcast_frame=self.broadcast_frame,
             emit_log=self.emit_log)
+        self.build = build_service.BuildService(
+            get_project=lambda: self._project,
+            emit_log=self.emit_log,
+            emit_step=self.emit_step,
+            before_sof_replace=self.board.unload_if_running)
 
     # activity tracking (watchdog)
     def touch(self):
@@ -124,13 +125,29 @@ class Backend:
         self.broadcast_json({"type": "log", "step": step,
                              "level": level, "text": text})
 
-    def emit_step(self, step, state, summary):
-        self.broadcast_json({"type": "step", "step": step,
-                             "state": state, "summary": summary})
+    def emit_step(self, step, state, summary, extra=None):
+        msg = {"type": "step", "step": step, "state": state,
+               "summary": summary}
+        if extra:
+            msg.update(extra)
+        self.broadcast_json(msg)
 
     def emit_program(self, phase, percent):
         self.broadcast_json({"type": "program", "phase": phase,
                              "percent": percent})
+
+    def broadcast_steps(self):
+        """Push fresh per-step states (used after QSF edits so the Tasks
+        pane flips to stale immediately)."""
+        try:
+            steps = self.build.status()["steps"]
+        except ProjectError:
+            return
+        for step, rec in steps.items():
+            extra = {k: rec[k] for k in ("pins", "timing", "sof")
+                     if k in rec}
+            self.emit_step(step, rec["state"], rec.get("summary", ""),
+                           extra)
 
     # project session
     def open_project(self, path):
@@ -151,8 +168,6 @@ class Backend:
         with open(qsf_path, "r", encoding="utf-8") as fh:
             qsf = qsf_service.parse(fh.read())
         top = qsf["top"] if qsf["top"] in [m["name"] for m in scan["modules"]] else None
-        if top is None and scan["top_candidates"]:
-            top = scan["top_candidates"][0]
         with self._project_lock:
             self._project = {
                 "name": name, "path": path,
@@ -319,8 +334,25 @@ class Handler(BaseHTTPRequestHandler):
         elif route == ("GET", "/api/diagnostics"):
             force = parse_qs(query).get("force") == ["1"]
             self._ok(diagnostics.probe_all(force=force))
+        elif route == ("POST", "/api/diagnostics/check"):
+            self._ok(diagnostics.probe_all(force=True, with_selfcheck=False))
+        elif route == ("POST", "/api/diagnostics/selftest"):
+            self._ok(diagnostics.probe_all(force=True, with_selfcheck=True))
+        elif route == ("GET", "/api/settings/tools"):
+            self._ok(self._tool_settings())
+        elif route == ("POST", "/api/settings/tools"):
+            self._save_tool_settings(body)
         elif route == ("GET", "/api/fs/home"):
-            self._ok({"path": os.path.expanduser("~")})
+            self._ok(project_service.list_dir(os.path.expanduser("~")))
+        elif route == ("POST", "/api/fs/browse"):
+            mode = (body or {}).get("mode")
+            if mode == "file":
+                self._ok({"path": project_service.browse_file(
+                    patterns=("*.sof", "*.sof.exe"))})
+            else:
+                self._ok({"path": project_service.browse_folder()})
+        elif route == ("GET", "/api/program/files"):
+            self._ok(self._program_files())
         elif route == ("GET", "/api/fs/list"):
             qs = parse_qs(query)
             target = qs.get("path", [os.path.expanduser("~")])[0]
@@ -395,6 +427,49 @@ class Handler(BaseHTTPRequestHandler):
                                "顶层模块 %s: %s" % (top, mod["reason"]))
         return mod["ports"]
 
+    def _tool_settings(self):
+        overrides = toolchain.get_overrides()
+        provider = toolchain.detect()
+        resolved = {}
+        for t in toolchain.TOOL_KEYS:
+            if overrides.get(t):
+                resolved[t] = overrides[t]
+            elif provider == "wsl":
+                rc, out = diagnostics.run_quick(
+                    ["wsl", "bash", "-lc", "command -v %s" % t])
+                resolved[t] = (out.strip().splitlines()[0]
+                               if rc == 0 and out.strip() else None)
+            else:
+                resolved[t] = toolchain.resolve(t)
+        return {"overrides": overrides, "provider": provider,
+                "resolved": resolved}
+
+    def _save_tool_settings(self, body):
+        tools_in = body.get("tools") or {}
+        if not isinstance(tools_in, dict):
+            raise ProjectError("BAD_SETTING", "tools 必须是对象")
+        cleaned = {}
+        errors = []
+        for key in toolchain.TOOL_KEYS:
+            val = str(tools_in.get(key) or "").strip()
+            if not val:
+                continue
+            if not os.path.isfile(val):
+                errors.append("%s: 文件不存在: %s" % (key, val))
+                continue
+            rc, out = diagnostics.run_quick([val, "--version"])
+            if rc != 0 and not out.strip():
+                errors.append("%s: 无法执行: %s" % (key, val))
+                continue
+            cleaned[key] = val
+        if errors:
+            raise ProjectError("BAD_SETTING", "；".join(errors))
+        settings = config.load_settings()
+        settings["tools"] = cleaned
+        config.save_settings(settings)
+        toolchain.detect(force=True)
+        self._ok(self._tool_settings())
+
     def _set_top(self, top):
         proj = self.backend.project_info()
         if not re.match(r"^[A-Za-z_]\w*$", top or ""):
@@ -425,6 +500,7 @@ class Handler(BaseHTTPRequestHandler):
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
         self._get_qsf()
+        self.backend.broadcast_steps()
 
     def _qsf_assign(self, pin, port):
         path = self._current_qsf_path()
@@ -436,6 +512,7 @@ class Handler(BaseHTTPRequestHandler):
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
         self._get_qsf()
+        self.backend.broadcast_steps()
 
     def _qsf_unassign(self, port):
         path = self._current_qsf_path()
@@ -445,12 +522,17 @@ class Handler(BaseHTTPRequestHandler):
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
         self._get_qsf()
+        self.backend.broadcast_steps()
 
     def _program(self, body):
         b = self.backend
+        proj = b.project_info()
         sof = body.get("sof")
+        if sof and not os.path.isabs(sof) and os.sep not in sof \
+                and "/" not in sof:
+            # bare file name -> the project's output_files/
+            sof = os.path.join(proj["path"], "output_files", sof)
         if not sof:
-            proj = b.project_info()
             sof_info = b.build.status().get("sof")
             if sof_info:
                 sof = os.path.join(proj["path"], "output_files",
@@ -462,6 +544,19 @@ class Handler(BaseHTTPRequestHandler):
                 b.emit_program("fail", 0)
             raise
         self._ok(state)
+
+    def _program_files(self):
+        """List .sof files in the current project's output_files/."""
+        proj = self.backend.project_info()
+        out_dir = os.path.join(proj["path"], "output_files")
+        files = []
+        if os.path.isdir(out_dir):
+            for f in sorted(os.listdir(out_dir)):
+                if f.endswith(".sof") or f.endswith(".sof.exe"):
+                    st = os.stat(os.path.join(out_dir, f))
+                    files.append({"name": f, "size_bytes": st.st_size,
+                                  "mtime": st.st_mtime})
+        return {"files": files}
 
     # ---- static & websocket --------------------------------------------
 
@@ -526,7 +621,9 @@ class Handler(BaseHTTPRequestHandler):
 
 class BackendServer(ThreadingHTTPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    # Windows SO_REUSEADDR permits two processes to share a port (silent
+    # hijack); only enable it on POSIX where it just eases TIME_WAIT.
+    allow_reuse_address = (os.name != "nt")
 
     def __init__(self, addr, token):
         super().__init__(addr, Handler)

@@ -35,11 +35,11 @@
 <header class="toolbar">
   <button id="btnOpenProject" class="btn">Open Project…</button>
   <div class="projinfo">
-    <span class="pi"><label>Project</label><b id="projName">—</b></span>
     <span class="pi wide"><label>Path</label><span id="projPath" class="mono">—</span></span>
-    <span class="pi"><label>Top Entity</label><span id="projTop" class="mono">—</span></span>
-    <span class="pi"><label>Device</label><span class="mono">Cyclone IV E EP4CE10F17C8</span></span>
   </div>
+  <span class="spacer"></span>
+  <button id="btnTools" class="btn">Tools…</button>
+  <button id="btnSettings" class="btn">Settings…</button>
 </header>
 
 <div class="main">
@@ -47,6 +47,18 @@
   <aside id="tasksPane">
     <div class="pane-title">Tasks</div>
     <ul class="tasktree" id="taskTree">
+      <li class="tnode" data-step="top">
+        <div class="trow" data-select="top">
+          <span class="ticon st-idle" id="topIcon"></span>
+          <span class="tlabel">Top Module</span>
+        </div>
+      </li>
+      <li class="tnode" data-step="pinplanner">
+        <div class="trow" data-select="pinplanner">
+          <span class="ticon st-idle" id="ppIcon"></span>
+          <span class="tlabel">Pin Planner</span>
+        </div>
+      </li>
       <li class="tnode parent" data-step="all">
         <div class="trow" data-select="all">
           <span class="twisty" id="twisty"></span>
@@ -79,7 +91,7 @@
         </ul>
       </li>
       <li class="tnode" data-step="programmer">
-        <div class="trow" id="programmerRow">
+        <div class="trow" data-select="programmer" id="programmerRow">
           <span class="ticon prog">▼</span>
           <span class="tlabel">Programmer</span>
         </div>
@@ -97,7 +109,6 @@
     <div id="reportSubtabs" hidden>
       <button class="subtab" data-sub="pinout">Pin-Out</button>
       <button class="subtab" data-sub="timing">Timing Summary</button>
-      <button class="subtab" data-sub="pinplanner">Pin Planner</button>
     </div>
     <div id="reportBody" class="report-body">
       <div class="placeholder">Open a project to begin (Open Project… top left).</div>
@@ -142,7 +153,9 @@
     <div class="modal-body">
       <div class="fsbar">
         <button id="fsUp" class="btn small">↑ Up</button>
-        <span id="fsPath" class="mono"></span>
+        <button id="fsBrowse" class="btn small">Browse…</button>
+        <input id="fsPath" class="mono fsinput" spellcheck="false"
+               placeholder="Folder path (paste or type, Enter to go)">
       </div>
       <div id="fsList" class="fslist"></div>
       <div id="fsError" class="errtext" hidden></div>
@@ -151,6 +164,46 @@
       <span class="spacer"></span>
       <button id="fsCancel" class="btn">Cancel</button>
       <button id="fsSelect" class="btn primary">Select This Folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tools modal: locate + version check, functional self-test -->
+<div id="toolsModal" class="modal-mask" hidden>
+  <div class="modal">
+    <div class="modal-head">Toolchain — 检查与自检 / Check & Self-Test</div>
+    <div class="modal-body">
+      <table class="datatable" id="toolsTable">
+        <thead><tr><th>Tool</th><th>Required</th><th>Found at</th><th>Version</th><th>Status</th></tr></thead>
+        <tbody id="toolsTableBody"></tbody>
+      </table>
+      <p class="muted small" style="margin-top:8px">「检查」= 查找工具并验证版本；「功能自检」= 每个工具实际编译/运行一个小程序（较慢）。路径来源在 Settings 中配置，留空则自动检测。</p>
+    </div>
+    <div class="modal-foot">
+      <button id="toolsCheck" class="btn">检查查找与版本</button>
+      <button id="toolsSelftest" class="btn">运行功能自检</button>
+      <span class="spacer"></span>
+      <button id="toolsClose" class="btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal: tool path overrides -->
+<div id="settingsModal" class="modal-mask" hidden>
+  <div class="modal">
+    <div class="modal-head">Settings — 工具路径 / Tool Paths</div>
+    <div class="modal-body">
+      <p class="muted small">留空 = 自动检测（Windows 依次尝试原生 PATH 与 WSL 回退）。如需指定，填可执行文件的完整路径，例如 <span class="mono">C:\tools\msys64\mingw64\bin\verilator.exe</span></p>
+      <div class="setrow"><label class="mono">verilator</label><input id="setVerilator" class="mono" spellcheck="false" placeholder="auto"></div>
+      <div class="setrow"><label class="mono">g++</label><input id="setGxx" class="mono" spellcheck="false" placeholder="auto"></div>
+      <div class="setrow"><label class="mono">yosys</label><input id="setYosys" class="mono" spellcheck="false" placeholder="auto"></div>
+      <p class="muted small" id="setProvider"></p>
+      <div id="setError" class="errtext" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button id="setCancel" class="btn">Cancel</button>
+      <button id="setSave" class="btn primary">Save</button>
     </div>
   </div>
 </div>
@@ -164,30 +217,6 @@
       <span class="spacer"></span>
       <button id="confirmCancel" class="btn">Cancel</button>
       <button id="confirmOk" class="btn primary">OK</button>
-    </div>
-  </div>
-</div>
-
-<!-- Programmer modal -->
-<div id="progModal" class="modal-mask" hidden>
-  <div class="modal">
-    <div class="modal-head">Programmer</div>
-    <div class="modal-body">
-      <div class="prow"><label>Hardware:</label> USB-Blaster (virtual) <span class="oktext">[Connected]</span></div>
-      <div class="prow"><label>File:</label> <span id="progFile" class="mono">—</span>
-        <span id="progMode" class="mono muted">Mode: JTAG</span></div>
-      <div class="progress"><div id="progBar" class="progress-bar"></div></div>
-      <div id="progPhase" class="prow phase">Idle</div>
-      <div id="progMsg" class="errtext" hidden></div>
-      <div id="progDone" class="oktext big" hidden>
-        100% — Configuration successful (CONF_DONE).
-        <a id="progGoBoard" href="#">Go to Development Board →</a>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <span class="spacer"></span>
-      <button id="progClose" class="btn">Close</button>
-      <button id="progStart" class="btn primary">Start</button>
     </div>
   </div>
 </div>

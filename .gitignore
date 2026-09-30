@@ -17,3 +17,4 @@ output_files/
 
 # 杂项
 *.bak
+app.log

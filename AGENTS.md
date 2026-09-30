@@ -165,7 +165,7 @@ module DevelopmentBoard(
 |-----------------|---------|------|
 | Analysis & Synthesis | `yosys -p 'read_verilog ...; hierarchy -top <top>; proc; check; stat; ltp'` | Quartus 风格 Flow Summary（LE/寄存器数取自 stat）；latch 推断等真实警告进 Messages |
 | Fitter (Place & Route) | QSF 引脚合法性校验（对照 board JSON；clk 不在 E1 则警告非专用时钟脚；vga_d 总线必须 16 位全分配；输出端口未分配→warn）；时序估算（见下） | 引脚分配报告 + TimeQuest 风格时序摘要 |
-| Assembler | `verilator -O3 --Wno-fatal --cc --top-module DevelopmentBoard` + **后端直接拼 g++**（无 make）：`g++ -O3 simulator.cpp obj_dir/VDevelopmentBoard*.cpp <verilator_root>/include/verilated.cpp -I...` | `output_files/<top>_r<N>.sof`（= 仿真可执行文件 + JSON 元数据；每次编译递增修订号 `top_r3.sof`，绕开 Windows 运行中 exe 锁定） |
+| Assembler | `verilator -O3 --Wno-fatal --cc --top-module DevelopmentBoard` + **后端直接拼 g++**（无 make）：`g++ -O3 simulator.cpp obj_dir/VDevelopmentBoard*.cpp <verilator_root>/include/verilated.cpp -I...` | `output_files/<top>.sof`（= 仿真可执行文件 + JSON 元数据；**固定名覆盖**。先编到 `<top>.sof.new`，成功后若板子正在运行旧镜像则先卸载（CONF_DONE 灭），再原子替换——绕开 Windows 运行中 exe 锁定，且行为可预期） |
 
 **时序估算**（Fitter 内）：`yosys read_verilog ...; synth -top <top>; ltp`（门级映射后测最长路径，取所有模块报告的最大值），Fmax ≈ 1000/(0.2×级数+1.5) MHz，Slack = 20ns − 估算周期。**与真实 Quartus 一致：时序不收敛只是 Critical Warning（Messages 红色提醒），不阻断后续 Assembler/Programmer**——仿真器是功能模型，时序问题不影响虚拟板运行。该估算是教学参考值，已在两个 Example 上校准（E1≈77MHz，E2≈56MHz）。
 | Assembler | `verilator -O3 --Wno-fatal --cc --top-module DevelopmentBoard` + **后端直接拼 g++**（无 make）：`g++ -O3 simulator.cpp obj_dir/VDevelopmentBoard*.cpp <verilator_root>/include/verilated.cpp -I...` | `output_files/<top>.sof`（= 仿真可执行文件 + JSON 元数据；每次编译递增修订号 `top_r3.sof`，绕开 Windows 运行中 exe 锁定） |
@@ -200,6 +200,9 @@ Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILA
 
 - `GET /`（EDA 工具页）、`GET /board.html`（开发板页）、静态资源
 - `POST /api/...`：工程选择、QSF 读写、compile 各步骤、program、power、input（按键）、ideal 开关
+- `GET /api/diagnostics`（缓存三级探测）；`POST /api/diagnostics/check`（快速：查找+版本）；`POST /api/diagnostics/selftest`（每个工具实际编译/运行小程序）
+- `GET/POST /api/settings/tools`：用户手动指定工具路径（settings.json 持久化在程序目录），留空 = 自动检测；保存时校验文件存在且可执行
+- QSF 变更（assign/unassign/save）后后端立即广播最新步骤状态（Tasks 窗格即时变 stale）
 - `GET /ws`：WebSocket。下行：VGA 二进制帧（每客户端只发最新帧，积压即丢）、`{type:"board",...}` 状态、`{type:"log",...}` 编译日志、`{type:"step",...}` 流程状态
 - 所有 `/api/*` 与 `/ws` 需 `X-Board-Token` 头（或 ws query 参数）；只绑 127.0.0.1；校验 Host 头防 DNS rebinding；看门狗：120s 无活动自动退出
 - 板卡状态机：`OFF → ON(unconfigured) → CONFIGURED(running)`；power off = 杀进程 + 清配置；program = 杀旧进程 → 起新进程
@@ -212,7 +215,7 @@ Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILA
 | macOS | `brew install verilator yosys`（Xcode CLT 提供 g++） | 同上 |
 | Windows | MSYS2：`pacman -S mingw-w64-x86_64-verilator mingw-w64-x86_64-gcc yosys`；**原生缺失时自动回退 WSL** | 后端始终原生运行；工具链提供者优先 native、整套回退 WSL（不按单个工具混用） |
 
-**工具链提供者**（`backend/services/toolchain.py`）：`detect()` 决定 native/WSL；`wrap_cmd()` 负责命令包装与 `D:\...` ↔ `/mnt/d/...` 路径互译；`sof_argv()` 启动仿真进程（WSL 下经 `wsl -e`）；`reap()` 在 wsl.exe 被杀后用 `pkill -xf` 回收 Linux 侧仿真进程（wsl.exe 死亡不会带走子进程）。WSL 管道二进制安全已实证（无 LF 转换）。
+**工具链提供者**（`backend/services/toolchain.py`）：`detect()` 决定 native/WSL；`wrap_cmd()` 负责命令包装与 `D:\...` ↔ `/mnt/d/...` 路径互译；`sof_argv()` 启动仿真进程（WSL 下经 `wsl -e`）；`reap()` 在 wsl.exe 被杀后用 `pkill -xf` 回收 Linux 侧仿真进程（wsl.exe 死亡不会带走子进程）。WSL 管道二进制安全已实证（无 LF 转换）。用户可在设置页手动指定工具路径（存程序目录 `settings.json`）——任何覆盖存在时强制 native 提供者，留空才自动检测。
 
 **无 SDL2、无 make、无强制 WSL、无显示环境配置**。开发主机若工具只在 WSL 里，Windows 侧 `uv run main.py` 即可全功能运行（自动走 WSL 提供者）。
 
