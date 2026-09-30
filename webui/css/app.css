@@ -239,6 +239,9 @@ body.page-ide { height: 100vh; display: flex; flex-direction: column; background
 .setrow input:focus { border-color: #2f6db3; outline: none; }
 .fsrow { display: flex; align-items: center; gap: 9px; padding: 7px 10px; cursor: pointer; user-select: none; }
 .fsrow:hover { background: #e8eef7; }
+.fsrow.file { cursor: default; color: #4a5058; }
+.fsrow.file:hover { background: inherit; }
+.fsrow.file .fsname { font-weight: 400; }
 .fsname { font-weight: 600; }
 .fsmeta { margin-left: auto; color: #7c8590; font-size: 11.5px; }
 
@@ -323,7 +326,10 @@ body.page-board {
 .powerled { fill: #3a0d0d; stroke: #5c1616; stroke-width: 1.5; transition: fill .15s; }
 .powerled.on { fill: #ff3b30; filter: url(#glowRed); stroke: #ff9a92; }
 
-.vgaconn { fill: url(#vgaBlue); stroke: #16294a; stroke-width: 2; }
+.vga-shell { fill: url(#metalGrad); stroke: #6a6e75; stroke-width: 2; }
+.vga-insert { fill: #1d3f77; stroke: #0e2142; stroke-width: 1.5; }
+.vga-post { fill: #b9bcc2; stroke: #54575e; stroke-width: 1.2; }
+.vga-posthole { fill: #2a2b31; }
 .vga-hole { fill: #0d1526; stroke: #6f87b3; stroke-width: 1; }
 
 .keybtn { cursor: pointer; touch-action: none; }

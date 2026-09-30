@@ -144,7 +144,7 @@ const state = {
   sof: null,
   running: false,
   programming: false,
-  board: { power: false, configured: false, conf_done: false, sim_running: false, ideal: false },
+  board: { power: false, configured: false, conf_done: false, sim_running: false },
   buttons: [1, 1, 1, 1, 1], // SW1..SW5, 1=released 0=pressed
   toolOverrides: {},
 };
@@ -400,13 +400,19 @@ export const mockImpl = {
       const names = FS.get(p);
       if (!names) throw { code: 'NO_DIR', message: 'Directory not found: ' + p };
       const parent = p === HOME ? null : p.slice(0, p.lastIndexOf('/'));
+      const meta = FS_META.get(p);
+      const files = meta && meta.v
+        ? [{ name: meta.top + '.v', size: 2138 }, { name: 'vga_ctrl.v', size: 3534 },
+           { name: p.split('/').pop() + '.qsf', size: 1978 }]
+        : [];
       return {
         path: p, parent,
         dirs: names.map(n => {
           const full = p + '/' + n;
-          const meta = FS_META.get(full) || { v: 0, qsf: false };
-          return { name: n, path: full, v: meta.v, qsf: meta.qsf };
+          const m2 = FS_META.get(full) || { v: 0, qsf: false };
+          return { name: n, path: full, v: m2.v, qsf: m2.qsf };
         }),
+        files,
       };
     }
     if (path === '/api/project') {
@@ -526,11 +532,6 @@ export const mockImpl = {
       if (b >= 0 && b < 5) state.buttons[b] = body.state ? 1 : 0;
       persist();
       return { ok: true };
-    }
-    if (path === '/api/ideal') {
-      state.board.ideal = !!body.on;
-      bcastBoard();
-      return { ideal: state.board.ideal };
     }
     throw { code: 'NOT_FOUND', message: 'Unknown API: ' + path };
   },

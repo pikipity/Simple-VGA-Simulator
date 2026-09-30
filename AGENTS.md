@@ -48,7 +48,7 @@ EDA 工具与开发板是**两个独立页面**，让学生明确意识到这是
 
 ### 按键抖动
 
-真板按键带 4.7KΩ 上拉 + 0.1µF 对地电容（硬件消抖），残余抖动为亚毫秒~2ms 级。仿真器默认注入该量级的随机抖动；开发板页提供不显眼的 "Ideal Input" 开关（默认关=有抖动）。
+真板按键带 4.7KΩ 上拉 + 0.1µF 对地电容（硬件消抖），残余抖动为亚毫秒~2ms 级。仿真器**始终注入**该量级的随机抖动（GUI 无开关）——不消抖的设计应当在板子上暴露问题。
 
 ## 板卡定义（board/ep4ce10_pro.json）
 
@@ -190,16 +190,16 @@ Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILA
 
 ```
 'B' [u8 button_id 0..4 = SW1..SW5] [u8 state: 0=按下 1=松开]
-'I' [u8 0|1]   Ideal Input 开关（1=无抖动）
 'Q'            退出
 ```
+（抖动注入恒为开，GUI 无开关；simulator.cpp 里的 'I' 命令是未使用的保留路径）
 
 时序 pacing：仿真按**墙钟 60Hz**  pacing（每发一帧 sleep 到下一个 16.67ms 边界；仿真快则等、慢则尽速）——真实板子就是实时的，且天然限制带宽。
 
 ### 后端 ↔ 前端
 
 - `GET /`（EDA 工具页）、`GET /board.html`（开发板页）、静态资源
-- `POST /api/...`：工程选择、QSF 读写、compile 各步骤、program、power、input（按键）、ideal 开关
+- `POST /api/...`：工程选择、QSF 读写、compile 各步骤、program、power、input（按键）
 - `GET /api/diagnostics`（缓存三级探测）；`POST /api/diagnostics/check`（快速：查找+版本）；`POST /api/diagnostics/selftest`（每个工具实际编译/运行小程序）
 - `GET/POST /api/settings/tools`：用户手动指定工具路径（settings.json 持久化在程序目录），留空 = 自动检测；保存时校验文件存在且可执行
 - QSF 变更（assign/unassign/save）后后端立即广播最新步骤状态（Tasks 窗格即时变 stale）

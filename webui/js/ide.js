@@ -500,12 +500,19 @@ async function loadFs(path) {
     fsState = data;
     $('fsPath').value = data.path;
     $('fsUp').disabled = !data.parent;
-    $('fsList').innerHTML = data.dirs.map(d =>
+    const dirRows = data.dirs.map(d =>
       `<div class="fsrow" data-path="${esc(d.path)}">
          <span class="fsicon">📁</span><span class="fsname">${esc(d.name)}</span>
          <span class="fsmeta">${d.v ? d.v + ' .v' : ''}${d.qsf ? ' · QSF ✓' : ''}</span>
-       </div>`).join('') || '<div class="placeholder">Empty folder.</div>';
-    $('fsList').querySelectorAll('.fsrow').forEach(row => {
+       </div>`);
+    const fileRows = (data.files || []).map(f =>
+      `<div class="fsrow file">
+         <span class="fsicon">📄</span><span class="fsname">${esc(f.name)}</span>
+         <span class="fsmeta">${fmtBytes(f.size)}</span>
+       </div>`);
+    $('fsList').innerHTML = dirRows.concat(fileRows).join('')
+      || '<div class="placeholder">Empty folder.</div>';
+    $('fsList').querySelectorAll('.fsrow:not(.file)').forEach(row => {
       row.addEventListener('dblclick', () => loadFs(row.dataset.path));
     });
   } catch (e) {
@@ -547,8 +554,8 @@ function renderTopModule(body) {
 let progExternal = sessionStorage.getItem('ide.progFile') || null;  // chosen .sof (survives page switches)
 
 async function renderProgrammer(body) {
-  if (!project) { body.innerHTML = '<div class="placeholder">Open a project first.</div>'; return; }
-  if (!project.top) { body.innerHTML = '<div class="placeholder">Select a top module first (Tasks → Top Module).</div>'; return; }
+  // Programming is project-independent: any .sof (built here or on
+  // another machine) can be programmed; no project needs to be open.
   body.innerHTML = `<div class="programmer">
     <div class="prow"><label>Hardware:</label> USB-Blaster (virtual) <span class="oktext">[Connected]</span> <span class="mono muted">Mode: JTAG</span></div>
     <div class="prow"><label>File:</label>

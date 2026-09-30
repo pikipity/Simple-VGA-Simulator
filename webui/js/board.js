@@ -174,9 +174,38 @@ function buildScene(def) {
 
   // VGA connector (DB15)
   const v = L.vga_conn;
-  el('rect', { x: v.x, y: v.y, width: v.w, height: v.h, rx: 8, class: 'vgaconn' }, boardG);
-  for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) {
-    el('circle', { cx: v.x + 22 + i * ((v.w - 44) / 4), cy: v.y + 13 + r * 17, r: 4.5, class: 'vga-hole' }, boardG);
+  // DE-15 (VGA) female connector: metal shell frame + screw posts flanking
+  // a dark-blue trapezoidal insert with 3 rows of 5 pin sockets
+  const indent = Math.round(v.w * 0.14);
+  el('path', {
+    d: `M ${v.x} ${v.y} L ${v.x + v.w} ${v.y} L ${v.x + v.w - indent} ${v.y + v.h} L ${v.x + indent} ${v.y + v.h} Z`,
+    class: 'vga-shell',
+  }, boardG);
+  const postY = v.y + v.h / 2;
+  for (const px of [v.x + 15, v.x + v.w - 15]) {
+    el('circle', { cx: px, cy: postY, r: 7.5, class: 'vga-post' }, boardG);
+    el('circle', { cx: px, cy: postY, r: 3, class: 'vga-posthole' }, boardG);
+  }
+  const ix = v.x + 28, iw = v.w - 56, iy = v.y + 8, ih = v.h - 16;
+  const iind = Math.round(iw * 0.12);
+  el('path', {
+    d: `M ${ix} ${iy} L ${ix + iw} ${iy} L ${ix + iw - iind} ${iy + ih} L ${ix + iind} ${iy + ih} Z`,
+    class: 'vga-insert',
+  }, boardG);
+  for (let r = 0; r < 3; r++) {
+    const rowY = iy + 7 + r * ((ih - 14) / 2);
+    const iin = iind * ((rowY - iy) / ih) + 8;
+    let x0 = ix + iin, x1 = ix + iw - iin;
+    if (r === 1) {
+      // middle row staggered: narrower span so every pin stays inside
+      const s = (x1 - x0) / 4;
+      x0 += s / 4;
+      x1 -= s / 4;
+    }
+    const sp = (x1 - x0) / 4;
+    for (let i = 0; i < 5; i++) {
+      el('circle', { cx: x0 + i * sp, cy: rowY, r: 3.2, class: 'vga-hole' }, boardG);
+    }
   }
   txt(boardG, v.x + v.w / 2, v.y + v.h + 20, v.text, 'silk');
 
@@ -255,10 +284,6 @@ function wireControls() {
     if (i >= 0) press(i, 1);
   });
 
-  $('idealSw').addEventListener('change', () => {
-    apiPost('/api/ideal', { on: $('idealSw').checked }).catch(e => hint(e.message || String(e), true));
-  });
-
   if (isMock()) {
     getMockControls().then(mc => {
       if (!mc) return;
@@ -294,7 +319,6 @@ function applyState() {
   powerLedEl.classList.toggle('on', !!state.power);
   confLedEl.classList.toggle('on', !!state.conf_done);
   knobEl.setAttribute('x', state.power ? knobOnX : knobOffX);
-  $('idealSw').checked = !!state.ideal;
   if (!state.power) setLeds(0);
   if (!state.power) hint('Board is OFF — flip the POWER switch on the board.');
   else if (!state.configured) hint('Powered, but FPGA not configured — use the Programmer in the EDA Tool.');

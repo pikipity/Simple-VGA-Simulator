@@ -387,8 +387,6 @@ class Handler(BaseHTTPRequestHandler):
             b.board.send_input(int(body.get("button", -1)),
                                int(body.get("state", -1)))
             self._ok(True)
-        elif route == ("POST", "/api/ideal"):
-            self._ok(b.board.set_ideal(bool(body.get("on"))))
         elif route == ("GET", "/api/board"):
             with open(config.BOARD_JSON, "r", encoding="utf-8") as fh:
                 self._ok(json.load(fh))
@@ -523,8 +521,9 @@ class Handler(BaseHTTPRequestHandler):
         self.backend.broadcast_steps()
 
     def _program(self, body):
+        # Programming is project-independent: the .sof may come from
+        # anywhere (including a build done on another machine).
         b = self.backend
-        b.project_info()  # NO_PROJECT fails synchronously
         sof = (body.get("sof") or "").strip() or None
         try:
             state = b.board.program(sof, b.emit_program)

@@ -225,19 +225,20 @@ def _native_browse(folder, patterns=()):
 
 def list_dir(path):
     """Directory browser payload: subdirs (each with .v count and qsf
-    flag) + current dir's own .v/.qsf inventory."""
+    flag) + ALL files in the current dir (students see their .v/.qsf
+    alongside everything else, like a real file manager)."""
     if not os.path.isdir(path):
         raise ProjectError("NOT_A_DIR", "不是目录: %s" % path)
-    dirs, v_count, qsf = [], 0, []
+    dirs, files, v_count, qsf = [], [], 0, []
     try:
         entries = sorted(os.listdir(path))
     except OSError as exc:
         raise ProjectError("READ_FAIL", str(exc))
     for entry in entries:
+        if entry.startswith("."):
+            continue
         full = os.path.join(path, entry)
         if os.path.isdir(full):
-            if entry.startswith("."):
-                continue
             try:
                 sub = os.listdir(full)
                 sub_v = sum(1 for f in sub if f.lower().endswith(".v"))
@@ -246,12 +247,19 @@ def list_dir(path):
                 sub_v, sub_qsf = 0, False
             dirs.append({"name": entry, "path": os.path.abspath(full),
                          "v": sub_v, "qsf": sub_qsf})
-        elif entry.lower().endswith(".v"):
-            v_count += 1
-        elif entry.lower().endswith(".qsf"):
-            qsf.append(entry)
+        elif os.path.isfile(full):
+            if entry.lower().endswith(".v"):
+                v_count += 1
+            elif entry.lower().endswith(".qsf"):
+                qsf.append(entry)
+            try:
+                size = os.path.getsize(full)
+            except OSError:
+                size = 0
+            files.append({"name": entry, "size": size})
     parent = os.path.dirname(os.path.normpath(path))
     if parent == os.path.normpath(path):
         parent = None
     return {"path": os.path.abspath(path), "parent": parent,
-            "dirs": dirs, "v_files": v_count, "qsf_files": qsf}
+            "dirs": dirs, "files": files,
+            "v_files": v_count, "qsf_files": qsf}

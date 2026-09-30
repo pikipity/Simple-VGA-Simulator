@@ -42,7 +42,6 @@ class BoardService:
         self.power = False
         self.configured = False
         self.conf_done = False
-        self.ideal = False
         self._sof = None
         self._proc = None
         self._ready = threading.Event()
@@ -57,7 +56,6 @@ class BoardService:
                 "configured": self.configured,
                 "conf_done": self.conf_done,
                 "sim_running": self._proc is not None and self._proc.poll() is None,
-                "ideal": self.ideal,
             }
 
     def _push_state(self):
@@ -267,8 +265,6 @@ class BoardService:
             raise ProjectError(
                 "SIM_TIMEOUT", "仿真进程未在 %ds 内就绪（SIM_READY 超时）"
                 % READY_TIMEOUT)
-        if self.ideal:
-            self._write_cmd(b"I\x01")
         with self._lock:
             self.configured = True
             self.conf_done = True
@@ -297,14 +293,6 @@ class BoardService:
         if state not in (0, 1):
             raise ProjectError("BAD_STATE", "state 必须是 0 或 1")
         self._write_cmd(bytes([ord("B"), button, state]))
-
-    def set_ideal(self, on):
-        on = bool(on)
-        with self._lock:
-            self.ideal = on
-        self._write_cmd(b"I" + bytes([1 if on else 0]))
-        self._push_state()
-        return self.state()
 
     def shutdown(self):
         self._kill_sim()
