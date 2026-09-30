@@ -138,9 +138,14 @@ def main():
     r = call(base, tok, "/api/program", "POST", {})
     check("program while OFF rejected", not r["ok"]
           and r["error"]["code"] == "BOARD_OFF", str(r.get("error")))
-
-    call(base, tok, "/api/power", "POST", {"on": True})
+    # no file selected -> rejected
     r = call(base, tok, "/api/program", "POST", {})
+    check("program without sof rejected", not r["ok"]
+          and r["error"]["code"] in ("NO_SOF", "BOARD_OFF"), str(r.get("error")))
+
+    sof_path = os.path.join(proj, "output_files", sof["name"])
+    call(base, tok, "/api/power", "POST", {"on": True})
+    r = call(base, tok, "/api/program", "POST", {"sof": sof_path})
     check("program ok", r["ok"] and r["data"]["conf_done"], str(r["data"]))
 
     ws = WSClient(args.port, tok)
@@ -174,7 +179,7 @@ def main():
     check("sof overwritten", sof2["name"] == sof["name"]
           and sof2["mtime"] > sof["mtime"],
           "%s -> %s" % (sof["name"], sof2["name"]))
-    r = call(base, tok, "/api/program", "POST", {})
+    r = call(base, tok, "/api/program", "POST", {"sof": sof_path})
     check("reprogram ok", r["ok"])
     ws = WSClient(args.port, tok)
     frames = read_frames(ws, 15)

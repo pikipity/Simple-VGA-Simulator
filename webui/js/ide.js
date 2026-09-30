@@ -13,7 +13,7 @@ let steps = {                // step -> {state, summary}
   assemble:  { state: 'idle', summary: null },
 };
 let sof = null;
-let selected = 'all';        // selected node in the Tasks tree
+let selected = sessionStorage.getItem('ide.selected') || 'all';  // selected node in the Tasks tree
 let subtab = 'pinout';       // fitter sub-tab
 let messages = [];           // {step, level, text}
 let programming = false;
@@ -51,7 +51,7 @@ async function init() {
     onClose: () => setConn(false),
     onMsg: onWsMessage,
   });
-  renderReport();
+  selectNode(selected);  // restores the view the user was on (page switches)
 }
 
 // ---------- connection ----------
@@ -113,6 +113,7 @@ function wireTasks() {
 
 function selectNode(step) {
   selected = step;
+  sessionStorage.setItem('ide.selected', step);
   document.querySelectorAll('#taskTree .trow').forEach(r => r.classList.toggle('sel', r.dataset.select === step));
   $('reportSubtabs').hidden = step !== 'fitter';
   $('reportTitle').textContent = STEP_TITLE[step] || step;
@@ -385,8 +386,6 @@ function renderMessages() {
 }
 
 // ---------- Tools & Settings ----------
-const TOOL_REQ = { verilator: '≥ 4.0', 'g++': '≥ 7.0', yosys: '≥ 0.9' };
-
 function wireToolsSettings() {
   $('btnTools').addEventListener('click', openTools);
   $('btnSettings').addEventListener('click', openSettings);
@@ -412,10 +411,10 @@ async function runToolsProbe(mode) {
     tbody.innerHTML = Object.entries(d).map(([name, t]) => `
       <tr>
         <td class="mono">${esc(name)}</td>
-        <td>${TOOL_REQ[name] || ''}</td>
+        <td class="mono">${esc(t.required || '—')}</td>
         <td class="mono">${esc(t.path || '—')}</td>
         <td class="mono">${esc(t.version || '—')}</td>
-        <td class="${t.ok ? 'toolok' : 'toolbad'}">${t.ok ? '✓' : '✗'} ${esc(t.detail || '')}</td>
+        <td class="${!t.ok ? 'toolbad' : t.warn ? 'toolwarn' : 'toolok'}">${!t.ok ? '✗' : t.warn ? '⚠' : '✓'} ${esc(t.detail || '')}</td>
       </tr>`).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="5" class="toolbad">${esc(e.message || String(e))}</td></tr>`;
@@ -545,45 +544,33 @@ function renderTopModule(body) {
 }
 
 // ---------- Programmer (inline in the report area) ----------
-let progExternal = null;   // absolute path of an externally built .sof, if chosen
+let progExternal = sessionStorage.getItem('ide.progFile') || null;  // chosen .sof (survives page switches)
 
 async function renderProgrammer(body) {
   if (!project) { body.innerHTML = '<div class="placeholder">Open a project first.</div>'; return; }
   if (!project.top) { body.innerHTML = '<div class="placeholder">Select a top module first (Tasks → Top Module).</div>'; return; }
-  let files = [];
-  try { files = (await apiGet('/api/program/files')).files || []; } catch (e) { /* ignore */ }
-  const curSof = sof ? sof.name : null;
   body.innerHTML = `<div class="programmer">
     <div class="prow"><label>Hardware:</label> USB-Blaster (virtual) <span class="oktext">[Connected]</span> <span class="mono muted">Mode: JTAG</span></div>
     <div class="prow"><label>File:</label>
-      <select id="progSel" class="mono">
-        ${files.map(f => `<option value="${esc(f.name)}" ${f.name === curSof ? 'selected' : ''}>${esc(f.name)} (${fmtBytes(f.size_bytes)})</option>`).join('')}
-        ${files.length ? '' : '<option value="">(output_files/ is empty — run Assembler first)</option>'}
-      </select>
-      <button id="progBrowse" class="btn small">其他 .sof 文件… / Browse…</button>
+      <span id="progFilePath" class="mono ${progExternal ? '' : 'muted'}">${progExternal ? esc(progExternal) : '(未选择 — 请点击 Browse… 选择 .sof 文件 / no file selected)'}</span>
+      <button id="progBrowse" class="btn small">Browse…</button>
     </div>
-    <div class="prow"><label></label><span id="progFilePath" class="mono muted small">${progExternal ? esc(progExternal) : ''}</span></div>
     <div class="progress"><div id="progBar" class="progress-bar"></div></div>
     <div id="progPhase" class="prow phase">Idle</div>
     <div id="progMsg" class="errtext" hidden></div>
     <div id="progDone" class="oktext big" hidden>100% — Configuration successful (CONF_DONE).
       <a id="progGoBoard" href="#">Go to Development Board →</a></div>
-    <div class="prow"><button id="progStart" class="btn primary">Start</button></div>
+    <div class="prow"><button id="progStart" class="btn primary" ${progExternal ? '' : 'disabled'}>Start</button></div>
   </div>`;
-  const browseExternal = async () => {
+  $('progBrowse').addEventListener('click', async () => {
     try {
       const r = await apiPost('/api/fs/browse', { mode: 'file' });
       if (r && r.path) {
         progExternal = r.path;
-        $('progFilePath').textContent = progExternal;
-        $('progSel').value = '';
+        sessionStorage.setItem('ide.progFile', progExternal);
+        renderProgrammer(body);
       }
     } catch (e) { toast(e.message || String(e), true); }
-  };
-  $('progBrowse').addEventListener('click', browseExternal);
-  $('progSel').addEventListener('change', () => {
-    progExternal = null;
-    $('progFilePath').textContent = '';
   });
   $('progGoBoard').addEventListener('click', (ev) => { ev.preventDefault(); location.href = pageUrl('board.html'); });
   $('progStart').addEventListener('click', startProgram);
@@ -594,10 +581,8 @@ async function startProgram() {
   $('progDone').hidden = true;
   programming = true;
   $('progStart').disabled = true;
-  const sel = $('progSel');
-  const sofArg = progExternal || (sel && sel.value) || null;
   try {
-    await apiPost('/api/program', sofArg ? { sof: sofArg } : {});
+    await apiPost('/api/program', { sof: progExternal });
   } catch (e) {
     // e.g. BOARD_OFF: board not powered — show the backend message as-is
     $('progMsg').textContent = e.message || String(e);

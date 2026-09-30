@@ -41,14 +41,12 @@ def _run(cmd, cwd=None, timeout=60, input_text=None):
         return -1, str(exc)
 
 
-def _version_tuple(text):
-    m = re.search(r"(\d+)\.(\d+)", text or "")
-    return (int(m.group(1)), int(m.group(2))) if m else None
-
-
-def _probe(name, version_cmd, version_re, minimum, selfcheck,
+def _probe(name, version_cmd, version_re, pinned, selfcheck,
            with_selfcheck):
-    """Return {path, version, ok, detail} for one tool."""
+    """Return {path, version, required, ok, warn, detail} for one tool.
+
+    Version policy: pinned exact match. A mismatch is a yellow warning
+    (ok stays True), suggesting the functional self-test."""
     provider = toolchain.detect()
     override = toolchain.get_overrides().get(name)
     if provider == "wsl":
@@ -56,7 +54,8 @@ def _probe(name, version_cmd, version_re, minimum, selfcheck,
         path = out.strip().splitlines()[0] if rc == 0 and out.strip() else None
     else:
         path = toolchain.resolve(name)
-    result = {"path": path, "version": None, "ok": False, "detail": ""}
+    result = {"path": path, "version": None, "required": pinned,
+              "ok": False, "warn": False, "detail": ""}
     if not path:
         result["detail"] = ("not found (native PATH or WSL)"
                             if provider is None else "not found in PATH")
@@ -69,21 +68,25 @@ def _probe(name, version_cmd, version_re, minimum, selfcheck,
     m = re.search(version_re, out)
     version = m.group(1) if m else None
     result["version"] = version
-    vtup = _version_tuple(version)
-    if vtup is None:
+    if version is None:
         result["detail"] = "could not parse version from: %s" % out.strip().splitlines()[0][:80]
         return result
-    if minimum and vtup < minimum:
-        result["detail"] = "version %s < required %s" % (
-            version, ".".join(str(x) for x in minimum))
-        return result
+    warn = bool(pinned) and version != pinned
     if not with_selfcheck:
         result["ok"] = True
-        result["detail"] = "version ok" + _suffix(provider, override)
+        result["warn"] = warn
+        result["detail"] = (("version ok" if not warn else
+            "版本不符（固定 %s，实际 %s）——可尝试使用，建议运行「功能自检」验证"
+            % (pinned, version)) + _suffix(provider, override))
         return result
     ok, detail = selfcheck()
     result["ok"] = ok
-    result["detail"] = detail + _suffix(provider, override)
+    result["warn"] = warn and ok
+    parts = []
+    if warn:
+        parts.append("版本不符（固定 %s，实际 %s）" % (pinned, version))
+    parts.append(detail)
+    result["detail"] = "; ".join(parts) + _suffix(provider, override)
     return result
 
 
@@ -155,15 +158,15 @@ def probe_all(force=False, with_selfcheck=True):
         result = {
             "verilator": _probe(
                 "verilator", ["verilator", "--version"],
-                r"Verilator\s+(\d+\.\d+)", config.MIN_VERILATOR,
+                r"Verilator\s+(\d+\.\d+)", config.PINNED_VERILATOR,
                 _selfcheck_verilator, with_selfcheck),
             "g++": _probe(
                 "g++", ["g++", "--version"],
-                r"g\+\+.*?(\d+\.\d+(?:\.\d+)?)", config.MIN_GXX,
+                r"g\+\+.*?(\d+\.\d+(?:\.\d+)?)", config.PINNED_GXX,
                 _selfcheck_gxx, with_selfcheck),
             "yosys": _probe(
                 "yosys", ["yosys", "-V"],
-                r"Yosys\s+(\d+\.\d+)", config.MIN_YOSYS,
+                r"Yosys\s+(\d+\.\d+)", config.PINNED_YOSYS,
                 _selfcheck_yosys, with_selfcheck),
         }
         _cache["time"] = time.time()

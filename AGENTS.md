@@ -209,11 +209,13 @@ Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILA
 
 ## 平台与工具链
 
-| 平台 | 工具链 | 说明 |
+| 平台 | 工具链（**版本固定**：verilator 4.038 / g++ 11.4.0 / yosys 0.9） | 说明 |
 |------|--------|------|
-| Linux | `apt install verilator g++ yosys`（锁版本见 config.py） | 后端与工具同机同 OS |
+| Linux | `apt install verilator g++ yosys` | 后端与工具同机同 OS |
 | macOS | `brew install verilator yosys`（Xcode CLT 提供 g++） | 同上 |
 | Windows | MSYS2：`pacman -S mingw-w64-x86_64-verilator mingw-w64-x86_64-gcc yosys`；**原生缺失时自动回退 WSL** | 后端始终原生运行；工具链提供者优先 native、整套回退 WSL（不按单个工具混用） |
+
+**版本策略**：版本号固定为课程参考环境的版本（见上表）。检测到不同版本不是硬错误——Tools 弹窗亮**黄灯**并提示"可尝试使用，建议运行功能自检"；找不到工具才是红灯。
 
 **工具链提供者**（`backend/services/toolchain.py`）：`detect()` 决定 native/WSL；`wrap_cmd()` 负责命令包装与 `D:\...` ↔ `/mnt/d/...` 路径互译；`sof_argv()` 启动仿真进程（WSL 下经 `wsl -e`）；`reap()` 在 wsl.exe 被杀后用 `pkill -xf` 回收 Linux 侧仿真进程（wsl.exe 死亡不会带走子进程）。WSL 管道二进制安全已实证（无 LF 转换）。用户可在设置页手动指定工具路径（存程序目录 `settings.json`）——任何覆盖存在时强制 native 提供者，留空才自动检测。
 

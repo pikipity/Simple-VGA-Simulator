@@ -76,6 +76,12 @@ function buildScene(def) {
     <linearGradient id="vgaBlue" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#3a63a8"/><stop offset="1" stop-color="#22406f"/>
     </linearGradient>
+    <radialGradient id="capUp" cx="38%" cy="32%" r="80%">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.65" stop-color="#e8e8ea"/><stop offset="1" stop-color="#b9bcc2"/>
+    </radialGradient>
+    <radialGradient id="capDown" cx="50%" cy="50%" r="80%">
+      <stop offset="0" stop-color="#878c94"/><stop offset="0.6" stop-color="#a9adb5"/><stop offset="1" stop-color="#d5d8dd"/>
+    </radialGradient>
     <filter id="glowBlue" x="-80%" y="-80%" width="260%" height="260%">
       <feGaussianBlur stdDeviation="7" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>

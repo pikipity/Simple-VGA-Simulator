@@ -231,6 +231,7 @@ body.page-ide { height: 100vh; display: flex; flex-direction: column; background
 .fsbar input.fsinput:focus { border-color: #2f6db3; background: #fff; }
 .fslist { border: 1px solid #dfe2e7; border-radius: 4px; height: 250px; overflow: auto; }
 .toolok { color: #1a7f37; }
+.toolwarn { color: #b26a00; }
 .toolbad { color: #c42b2b; }
 .setrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
 .setrow label { width: 90px; font-size: 12px; }
@@ -279,7 +280,9 @@ body.page-board {
 
 /* --- SVG scene --- */
 #scene .board { transition: filter .45s; }
-#scene.off .board { filter: brightness(.48) saturate(.5); }
+/* power-off: the board does NOT dim (a real board looks the same);
+   only the power LED / CONF_DONE / monitor (No Signal) tell the state */
+#scene.off .cable { opacity: .55; }
 #scene .cable { stroke: #26262b; stroke-width: 17; stroke-linecap: round; }
 #scene.off .cable { opacity: .55; }
 
@@ -326,10 +329,17 @@ body.page-board {
 .keybtn { cursor: pointer; touch-action: none; }
 .keybtn .keybase { fill: #1c1e22; stroke: #3a3d42; stroke-width: 1.5; }
 .keybtn .keycap {
-  fill: #e8e8ea; stroke: #8f9299; stroke-width: 1.5;
-  transition: transform .06s, fill .06s;
+  fill: url(#capUp); stroke: #8f9299; stroke-width: 1.5;
+  transform-box: fill-box; transform-origin: center;
+  transition: transform .07s ease-out, fill .07s;
 }
-.keybtn .keycap.down { transform: translateY(2.5px) scale(.94); fill: #c9cdd4; }
+.keybtn .keycap.down {
+  /* soft tactile switch: the cap dents inward (recessed lighting),
+     never slides around */
+  transform: scale(.88);
+  fill: url(#capDown);
+  stroke: #6f747c;
+}
 #scene:not(.live) .keybtn { cursor: default; }
 
 .led { fill: #12283f; stroke: #2a4a6a; stroke-width: 1.5; transition: fill .08s; }

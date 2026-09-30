@@ -422,9 +422,6 @@ export const mockImpl = {
       return { overrides: { ...state.toolOverrides }, provider: 'wsl',
         resolved: { verilator: '/usr/bin/verilator', 'g++': '/usr/bin/g++', yosys: '/usr/bin/yosys' } };
     }
-    if (path === '/api/program/files') {
-      return { files: state.sof ? [state.sof] : [] };
-    }
     if (path === '/api/compile/status') {
       return {
         steps: JSON.parse(JSON.stringify(state.steps)),
@@ -454,9 +451,9 @@ export const mockImpl = {
       await sleep(path.endsWith('selftest') ? 1200 : 300);
       const suffix = path.endsWith('selftest') ? 'self-check ok (via WSL)' : 'version ok (via WSL)';
       return {
-        verilator: { path: '/usr/bin/verilator', version: '4.038', ok: true, detail: suffix },
-        'g++': { path: '/usr/bin/g++', version: '11.4.0', ok: true, detail: suffix },
-        yosys: { path: '/usr/bin/yosys', version: '0.9', ok: true, detail: suffix },
+        verilator: { path: '/usr/bin/verilator', version: '4.038', required: '4.038', ok: true, warn: false, detail: suffix },
+        'g++': { path: '/usr/bin/g++', version: '11.4.0', required: '11.4.0', ok: true, warn: false, detail: suffix },
+        yosys: { path: '/usr/bin/yosys', version: '0.9', required: '0.9', ok: true, warn: false, detail: suffix },
       };
     }
     if (path === '/api/settings/tools') {
@@ -512,7 +509,7 @@ export const mockImpl = {
       if (!state.board.power) {
         throw { code: 'BOARD_OFF', message: '未检测到开发板，请检查电源和 USB-Blaster 连接 (No board detected — check power and USB-Blaster cable)' };
       }
-      if (!state.sof) throw { code: 'NO_SOF', message: 'No programming file found. Run Assembler first.' };
+      if (!body.sof) throw { code: 'NO_SOF', message: '请先用 Browse… 选择要烧录的 .sof 文件 (choose a .sof file first)' };
       runProgram();
       return { started: true };
     }

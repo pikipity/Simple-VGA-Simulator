@@ -235,7 +235,7 @@ class BoardService:
                     "BOARD_OFF",
                     "未检测到开发板，请检查电源和 USB-Blaster 连接")
         if not sof_path or not os.path.isfile(sof_path):
-            raise ProjectError("NO_SOF", "没有可烧录的 .sof 文件，请先完成 Assembler")
+            raise ProjectError("NO_SOF", "没有选择烧录文件——请在 Programmer 页面用 Browse… 选择 .sof 文件")
         size = os.path.getsize(sof_path)
         with self._lock:
             self.conf_done = False

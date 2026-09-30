@@ -351,8 +351,6 @@ class Handler(BaseHTTPRequestHandler):
                     patterns=("*.sof", "*.sof.exe"))})
             else:
                 self._ok({"path": project_service.browse_folder()})
-        elif route == ("GET", "/api/program/files"):
-            self._ok(self._program_files())
         elif route == ("GET", "/api/fs/list"):
             qs = parse_qs(query)
             target = qs.get("path", [os.path.expanduser("~")])[0]
@@ -526,17 +524,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _program(self, body):
         b = self.backend
-        proj = b.project_info()
-        sof = body.get("sof")
-        if sof and not os.path.isabs(sof) and os.sep not in sof \
-                and "/" not in sof:
-            # bare file name -> the project's output_files/
-            sof = os.path.join(proj["path"], "output_files", sof)
-        if not sof:
-            sof_info = b.build.status().get("sof")
-            if sof_info:
-                sof = os.path.join(proj["path"], "output_files",
-                                   sof_info["name"])
+        b.project_info()  # NO_PROJECT fails synchronously
+        sof = (body.get("sof") or "").strip() or None
         try:
             state = b.board.program(sof, b.emit_program)
         except ProjectError as exc:
@@ -544,19 +533,6 @@ class Handler(BaseHTTPRequestHandler):
                 b.emit_program("fail", 0)
             raise
         self._ok(state)
-
-    def _program_files(self):
-        """List .sof files in the current project's output_files/."""
-        proj = self.backend.project_info()
-        out_dir = os.path.join(proj["path"], "output_files")
-        files = []
-        if os.path.isdir(out_dir):
-            for f in sorted(os.listdir(out_dir)):
-                if f.endswith(".sof") or f.endswith(".sof.exe"):
-                    st = os.stat(os.path.join(out_dir, f))
-                    files.append({"name": f, "size_bytes": st.st_size,
-                                  "mtime": st.st_mtime})
-        return {"files": files}
 
     # ---- static & websocket --------------------------------------------
 

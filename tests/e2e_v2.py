@@ -96,8 +96,11 @@ check("sof exists", sof is not None and sof["name"] == "ColorBar.sof",
       str(sof))
 mtime1 = sof["mtime"] if sof else 0
 
+SOF1 = ROOT + "/Example/Example_1_ColorBar/output_files/ColorBar.sof"
+SOF2 = ROOT + "/Example/Example_2_BallMove/output_files/Simple_VGA.sof"
+
 # program while powered off -> must fail
-r = api("/api/program", {})
+r = api("/api/program", {"sof": SOF1})
 check("program while OFF rejected", not r["ok"]
       and r["error"]["code"] == "BOARD_OFF", str(r.get("error")))
 
@@ -106,7 +109,7 @@ r = api("/api/power", {"on": True})
 check("power on", r["ok"])
 ws = WSClient(PORT, TOKEN)
 time.sleep(0.5)
-r = api("/api/program", {})
+r = api("/api/program", {"sof": SOF1})
 check("program accepted", r["ok"])
 time.sleep(4)  # program ceremony
 frames = read_frames(ws, 30)
@@ -129,7 +132,7 @@ sof2 = api("/api/compile/status")["data"]["sof"]
 check("sof overwritten (same name, newer)", sof2
       and sof2["name"] == "ColorBar.sof" and sof2["mtime"] > mtime1,
       str(sof2))
-r = api("/api/program", {})
+r = api("/api/program", {"sof": SOF1})
 check("reprogram accepted", r["ok"])
 time.sleep(4)
 frames2 = read_frames(ws, 20)
@@ -157,7 +160,7 @@ st = wait_compile()
 check("compile all ok", all(s["state"] == "ok" for s in st.values()),
       str({k: v["state"] for k, v in st.items()}))
 api("/api/power", {"on": True})
-r = api("/api/program", {})
+r = api("/api/program", {"sof": SOF2})
 check("program accepted", r["ok"])
 time.sleep(4)
 ws = WSClient(PORT, TOKEN)

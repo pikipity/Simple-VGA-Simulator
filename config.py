@@ -16,10 +16,12 @@ import sys
 
 VERSION = "2.0.0"
 
-# Locked external tool minimum versions (see AGENTS.md platform table).
-MIN_VERILATOR = (4, 0)
-MIN_YOSYS = (0, 9)
-MIN_GXX = (7, 0)
+# Pinned tool versions (identical to the course reference environment).
+# A different version is NOT a hard error: it lights a yellow warning and
+# suggests running the functional self-test.
+PINNED_VERILATOR = "4.038"
+PINNED_GXX = "11.4.0"
+PINNED_YOSYS = "0.9"
 TOOLS = ("verilator", "g++", "yosys")
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
