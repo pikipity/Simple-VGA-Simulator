@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - dev
-      - v2-web-board
   workflow_dispatch:
 
 env:
