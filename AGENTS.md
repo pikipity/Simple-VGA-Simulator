@@ -94,6 +94,7 @@ Simple-VGA-Simulator/
 │   ├── ws.py                   # 最小 WebSocket 服务端实现（RFC6455，标准库）
 │   └── services/
 │       ├── diagnostics.py      # verilator/g++/yosys 三级探测与版本验证
+│       ├── toolchain.py        # 工具链提供者（native / WSL 回退、路径互译、进程回收）
 │       ├── project_service.py  # 工程扫描、Verilog ANSI 端口解析
 │       ├── qsf_service.py      # QSF 解析/校验/生成（对照 board JSON）
 │       ├── build_service.py    # 综合(Yosys)/布线(校验+时序估算)/汇编(verilator+g++)
@@ -209,11 +210,13 @@ Verilator runtime 路径探测：`verilator -getenv VERILATOR_ROOT` → `$VERILA
 |------|--------|------|
 | Linux | `apt install verilator g++ yosys`（锁版本见 config.py） | 后端与工具同机同 OS |
 | macOS | `brew install verilator yosys`（Xcode CLT 提供 g++） | 同上 |
-| Windows | MSYS2：`pacman -S mingw-w64-x86_64-verilator mingw-w64-x86_64-gcc yosys` | 同上 |
+| Windows | MSYS2：`pacman -S mingw-w64-x86_64-verilator mingw-w64-x86_64-gcc yosys`；**原生缺失时自动回退 WSL** | 后端始终原生运行；工具链提供者优先 native、整套回退 WSL（不按单个工具混用） |
 
-**无 SDL2、无 make、无 WSL 依赖、无显示环境配置**。开发主机可用 WSL 跑后端（Windows 浏览器经 localhost 转发访问）。
+**工具链提供者**（`backend/services/toolchain.py`）：`detect()` 决定 native/WSL；`wrap_cmd()` 负责命令包装与 `D:\...` ↔ `/mnt/d/...` 路径互译；`sof_argv()` 启动仿真进程（WSL 下经 `wsl -e`）；`reap()` 在 wsl.exe 被杀后用 `pkill -xf` 回收 Linux 侧仿真进程（wsl.exe 死亡不会带走子进程）。WSL 管道二进制安全已实证（无 LF 转换）。
 
-学生侧总安装量：Python 包（绿色软件）+ 各平台包管理器两三条命令。
+**无 SDL2、无 make、无强制 WSL、无显示环境配置**。开发主机若工具只在 WSL 里，Windows 侧 `uv run main.py` 即可全功能运行（自动走 WSL 提供者）。
+
+学生侧总安装量：Python 包（绿色软件）+ 各平台包管理器两三条命令（Windows 装了 MSYS2 则连 WSL 都不需要）。
 
 ## 开发工作流程规则
 

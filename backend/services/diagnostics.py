@@ -9,12 +9,12 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
 
 import config
+from . import toolchain
 
 log = logging.getLogger("diagnostics")
 
@@ -48,12 +48,19 @@ def _version_tuple(text):
 
 def _probe(name, version_cmd, version_re, minimum, selfcheck):
     """Return {path, version, ok, detail} for one tool."""
-    path = shutil.which(name)
+    provider = toolchain.detect()
+    if provider == "wsl":
+        rc, out = _run(["wsl", "bash", "-lc", "command -v %s" % name])
+        path = out.strip().splitlines()[0] if rc == 0 and out.strip() else None
+    else:
+        path = shutil.which(name)
     result = {"path": path, "version": None, "ok": False, "detail": ""}
     if not path:
-        result["detail"] = "not found in PATH"
+        result["detail"] = ("not found (native PATH or WSL)"
+                            if provider is None else "not found in PATH")
         return result
-    rc, out = _run(version_cmd)
+    argv, cwd = toolchain.wrap_cmd(version_cmd)
+    rc, out = _run(argv, cwd=cwd)
     if rc != 0 and not out:
         result["detail"] = "version probe failed"
         return result
@@ -69,6 +76,8 @@ def _probe(name, version_cmd, version_re, minimum, selfcheck):
             version, ".".join(str(x) for x in minimum))
         return result
     ok, detail = selfcheck()
+    if ok and provider == "wsl":
+        detail += " (via WSL)"
     result["ok"] = ok
     result["detail"] = detail
     return result
@@ -79,9 +88,10 @@ def _selfcheck_verilator():
         src = os.path.join(tmp, "t.v")
         with open(src, "w") as fh:
             fh.write(_VERILATOR_SRC)
-        rc, out = _run(
+        argv, cwd = toolchain.wrap_cmd(
             ["verilator", "--cc", "--top-module", "t", src,
              "--Mdir", os.path.join(tmp, "obj_dir")], cwd=tmp)
+        rc, out = _run(argv, cwd=cwd)
         if rc == 0 and os.path.exists(os.path.join(tmp, "obj_dir", "Vt.h")):
             return True, "self-check ok"
         return False, "self-check failed: " + out.strip().splitlines()[-1][:120] if out.strip() else "self-check failed"
@@ -92,7 +102,8 @@ def _selfcheck_yosys():
         src = os.path.join(tmp, "t.v")
         with open(src, "w") as fh:
             fh.write(_VERILATOR_SRC)
-        rc, out = _run(["yosys", "-p", _YOSYS_SCRIPT], cwd=tmp)
+        argv, cwd = toolchain.wrap_cmd(["yosys", "-p", _YOSYS_SCRIPT], cwd=tmp)
+        rc, out = _run(argv, cwd=cwd)
         if rc == 0:
             return True, "self-check ok"
         return False, "self-check failed: " + (out.strip().splitlines()[-1][:120] if out.strip() else "")
@@ -100,8 +111,9 @@ def _selfcheck_yosys():
 
 def _selfcheck_gxx():
     with tempfile.TemporaryDirectory(prefix="vgachk_cc_") as tmp:
-        exe = os.path.join(tmp, "t.exe" if sys.platform == "win32" else "t")
-        rc, out = _run(["g++", "-x", "c++", "-", "-o", exe], input_text=_GXX_SRC)
+        exe = os.path.join(tmp, "t" + toolchain.exe_suffix())
+        argv, cwd = toolchain.wrap_cmd(["g++", "-x", "c++", "-", "-o", exe])
+        rc, out = _run(argv, cwd=cwd, input_text=_GXX_SRC)
         if rc == 0 and os.path.exists(exe):
             return True, "self-check ok"
         return False, "self-check failed: " + (out.strip().splitlines()[-1][:120] if out.strip() else "")
@@ -109,6 +121,8 @@ def _selfcheck_gxx():
 
 def probe_all(force=False):
     """Probe verilator, g++ and yosys. Returns {tool: {path, version, ok, detail}}."""
+    if force:
+        toolchain.detect(force=True)
     with _cache_lock:
         if not force and _cache["result"] and time.time() - _cache["time"] < _CACHE_TTL:
             return _cache["result"]

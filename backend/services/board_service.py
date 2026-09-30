@@ -21,6 +21,7 @@ import threading
 import time
 
 from .project_service import ProjectError
+from . import toolchain
 
 log = logging.getLogger("board")
 
@@ -93,7 +94,7 @@ class BoardService:
         if sof_path.endswith(".py"):
             cmd = [sys.executable, sof_path]
         else:
-            cmd = [sof_path]
+            cmd = toolchain.sof_argv(sof_path)
         log.info("spawning simulator: %s", cmd[0])
         return subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -102,6 +103,7 @@ class BoardService:
 
     def _kill_sim(self):
         proc = self._proc
+        sof = self._sof
         self._proc = None
         if not proc:
             return
@@ -119,6 +121,9 @@ class BoardService:
                     proc.wait(timeout=2.0)
                 except subprocess.TimeoutExpired:
                     pass
+                # killing the wsl.exe wrapper leaves the Linux-side
+                # simulator orphaned; reap it explicitly
+                toolchain.reap(sof)
         for stream in (proc.stdin, proc.stdout, proc.stderr):
             try:
                 stream.close()

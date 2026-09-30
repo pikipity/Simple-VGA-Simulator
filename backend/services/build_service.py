@@ -8,10 +8,13 @@ hash of the input files) in <project>/build/.build_state.json so a
 source edit marks completed steps as stale.
 
 Timing model (teaching approximation, per AGENTS.md):
-    est_period_ns = 0.7 * (longest path levels) + 3
+    longest path = max over modules of yosys `ltp` after `synth` (gate level)
+    est_period_ns = 0.2 * levels + 1.5
     Fmax_MHz      = 1000 / est_period_ns
     slack_ns      = 20 - est_period_ns      (50 MHz clock)
-Negative slack fails the Fitter step ("timing not converged").
+Negative slack is a Critical Warning only (matches real Quartus: timing
+failure does not block bitstream generation; the simulator is a
+functional model).
 """
 import datetime
 import glob
@@ -24,7 +27,7 @@ import subprocess
 import threading
 
 import config
-from . import project_service, qsf_service
+from . import project_service, qsf_service, toolchain
 from .project_service import ProjectError
 
 log = logging.getLogger("build")
@@ -240,10 +243,11 @@ class BuildService:
         stream=False 时只收集输出（告警/错误仍转发），用于时序估算等
         不需要把整份工具日志倒进 Messages 的场合。
         """
+        argv, popen_cwd = toolchain.wrap_cmd(cmd, cwd)
         self._emit_log(step, "info", "$ " + " ".join(cmd))
         try:
             proc = subprocess.Popen(
-                cmd, cwd=cwd, stdout=subprocess.PIPE,
+                argv, cwd=popen_cwd, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         except OSError as exc:
@@ -658,12 +662,16 @@ class BuildService:
         return max(revs) + 1 if revs else 1
 
     def _verilator_root(self):
+        argv, cwd = toolchain.wrap_cmd(["verilator", "-getenv", "VERILATOR_ROOT"])
         try:
             out = subprocess.check_output(
-                ["verilator", "-getenv", "VERILATOR_ROOT"],
-                universal_newlines=True, timeout=15).strip()
-            if out and os.path.isdir(out):
-                return out
+                argv, cwd=cwd, universal_newlines=True, timeout=15,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).strip()
+            if out:
+                if toolchain.detect() == "wsl":
+                    return out  # already a WSL path; used inside WSL commands
+                if os.path.isdir(out):
+                    return out
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
             pass
         return "/usr/share/verilator"
@@ -704,8 +712,7 @@ class BuildService:
             self._set_step(proj, "assemble", "fail", summary)
             raise ProjectError("ASSEMBLE_FAIL", summary + "（详见 Messages）")
         rev = self._next_revision(out_dir, top)
-        exe = ".exe" if os.name == "nt" else ""
-        sof_name = "%s_r%d.sof%s" % (top, rev, exe)
+        sof_name = "%s_r%d.sof%s" % (top, rev, toolchain.exe_suffix())
         sof_path = os.path.join(out_dir, sof_name)
         if not os.path.exists(config.SIM_CPP):
             self._emit_log("assemble", "warn",
@@ -725,13 +732,13 @@ class BuildService:
             os.path.join(obj_dir, "VDevelopmentBoard*.cpp")))
         cmd = (["g++", "-O3",
                 "-I", obj_dir,
-                "-I", os.path.join(vroot, "include"),
-                "-I", os.path.join(vroot, "include", "vltstd"),
+                "-I", toolchain.join(vroot, "include"),
+                "-I", toolchain.join(vroot, "include", "vltstd"),
                 os.path.abspath(config.SIM_CPP)]
                + model_cpps
-               + [os.path.join(vroot, "include", "verilated.cpp"),
+               + [toolchain.join(vroot, "include", "verilated.cpp"),
                   "-o", sof_path])
-        if os.name != "nt":
+        if toolchain.needs_pthread():
             cmd.append("-pthread")
         rc, _ = self._run_streaming("assemble", cmd, build_dir)
         if rc != 0 or not os.path.exists(sof_path):
