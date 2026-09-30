@@ -247,6 +247,9 @@ body.page-ide { height: 100vh; display: flex; flex-direction: column; background
 
 .errtext { color: #b3282d; font-weight: 600; padding: 8px 2px 0; }
 .warnbox { color: #9a6a00; background: #fdf6e3; border: 1px solid #e8d9a0; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; }
+.busyind { color: #6a7078; font-size: 12px; display: inline-flex; align-items: center; }
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid #d5dbe3; border-top-color: #2f6db3; border-radius: 50%; animation: vgaspin 0.8s linear infinite; margin-right: 7px; }
+@keyframes vgaspin { to { transform: rotate(360deg); } }
 .oktext { color: #157a3e; font-weight: 600; }
 .oktext.big { padding-top: 10px; font-size: 13px; }
 .oktext a { color: #2f6fb2; }

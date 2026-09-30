@@ -32,7 +32,6 @@ set_location_assignment PIN_D1 -to vsync
 set_location_assignment PIN_L7 -to led1
 set_location_assignment PIN_M6 -to led2
 set_location_assignment PIN_P3 -to led3
-set_location_assignment PIN_N3 -to led4
 # led5: not assigned - this board has only 4 user LEDs (LED2~LED5)
 set_location_assignment PIN_A5 -to rgb_0
 set_location_assignment PIN_B4 -to rgb_1[14]
@@ -41,7 +40,6 @@ set_location_assignment PIN_B5 -to rgb_1[12]
 set_location_assignment PIN_A6 -to rgb_1[11]
 set_location_assignment PIN_B6 -to rgb_1[10]
 set_location_assignment PIN_F6 -to rgb_1[9]
-set_location_assignment PIN_F7 -to rgb_1[8]
 set_location_assignment PIN_A7 -to rgb_1[7]
 set_location_assignment PIN_B7 -to rgb_1[6]
 set_location_assignment PIN_E8 -to rgb_1[5]
@@ -50,3 +48,5 @@ set_location_assignment PIN_A8 -to rgb_1[3]
 set_location_assignment PIN_B8 -to rgb_1[2]
 set_location_assignment PIN_E7 -to rgb_1[1]
 set_location_assignment PIN_E6 -to rgb_1[0]
+set_location_assignment PIN_N3 -to led4
+set_location_assignment PIN_F7 -to rgb_1[8]

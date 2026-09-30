@@ -2,13 +2,13 @@
  "steps": {
   "synthesis": {
    "state": "ok",
-   "time": "2026-09-30T13:58:12",
-   "summary": "Flow Summary\n-----------------------------\nFlow Status              : Successful - Wed Sep 30 13:58:12 2026\nTop-level Entity Name    : Simple_VGA\nFamily                   : Cyclone IV E\nDevice                   : EP4CE10F17C8N\nTotal logic elements     : 93\nTotal registers          : 0\nInferred latches         : 0\nTotal pins               : 26 of 180 used (virtual board)",
-   "hash": "daf5b106817af4c08c871c2fbe7b50c8dbaa962d"
+   "time": "2026-09-30T14:15:47",
+   "summary": "Flow Summary\n-----------------------------\nFlow Status              : Successful - Wed Sep 30 14:15:47 2026\nTop-level Entity Name    : Simple_VGA\nFamily                   : Cyclone IV E\nDevice                   : EP4CE10F17C8N\nTotal logic elements     : 93\nTotal registers          : 0\nInferred latches         : 0\nTotal pins               : 26 of 180 used (virtual board)",
+   "hash": "b67337ef57ed34a1a758bd1e87b782c7cf0404e3"
   },
   "fitter": {
    "state": "ok",
-   "time": "2026-09-30T13:58:14",
+   "time": "2026-09-30T14:15:49",
    "summary": "+-----------+-------------------+---------------+\n; Pin       ; Student Port      ; Board Signal  ;\n+-----------+-------------------+---------------+\n; PIN_A2     ; rgb_1[13]         ; vga_d[1]      ;\n; PIN_A5     ; rgb_0             ; vga_d[15]     ;\n; PIN_A6     ; rgb_1[11]         ; vga_d[3]      ;\n; PIN_A7     ; rgb_1[7]          ; vga_d[7]      ;\n; PIN_A8     ; rgb_1[3]          ; vga_d[11]     ;\n; PIN_B4     ; rgb_1[14]         ; vga_d[0]      ;\n; PIN_B5     ; rgb_1[12]         ; vga_d[2]      ;\n; PIN_B6     ; rgb_1[10]         ; vga_d[4]      ;\n; PIN_B7     ; rgb_1[6]          ; vga_d[8]      ;\n; PIN_B8     ; rgb_1[2]          ; vga_d[12]     ;\n; PIN_C2     ; hsync             ; vga_hs        ;\n; PIN_D1     ; vsync             ; vga_vs        ;\n; PIN_E1     ; sys_clk           ; clk           ;\n; PIN_E15    ; left              ; key[2]        ;\n; PIN_E16    ; right             ; key[3]        ;\n; PIN_E6     ; rgb_1[0]          ; vga_d[14]     ;\n; PIN_E7     ; rgb_1[1]          ; vga_d[13]     ;\n; PIN_E8     ; rgb_1[5]          ; vga_d[9]      ;\n; PIN_F6     ; rgb_1[9]          ; vga_d[5]      ;\n; PIN_F7     ; rgb_1[8]          ; vga_d[6]      ;\n; PIN_F8     ; rgb_1[4]          ; vga_d[10]     ;\n; PIN_L7     ; led1              ; led[0]        ;\n; PIN_M1     ; down              ; key[1]        ;\n; PIN_M15    ; sys_rst_n         ; key_reset     ;\n; PIN_M2     ; up                ; key[0]        ;\n; PIN_M6     ; led2              ; led[1]        ;\n; PIN_N3     ; led4              ; led[3]        ;\n; PIN_P3     ; led3              ; led[2]        ;\n+-----------+-------------------+---------------+\n\n+-------------------------------------------------------+\n; TimeQuest Timing Analyzer - Slow 1200mV 85C Model     ;\n+---------------------------+---------------------------+\n; Clock                     ; clk (PIN_E1, 50 MHz)      ;\n; Required Period           ;               20.000 ns ;\n; Estimated Period          ;               17.700 ns ;\n; Worst-case Slack          ;                2.300 ns ;\n; Estimated Fmax            ;               56.50 MHz ;\n; Longest path (levels)     ;                   81    ;\n+---------------------------+---------------------------+",
    "pins": [
     {
@@ -187,18 +187,18 @@
     "pass": true,
     "depth": 81
    },
-   "hash": "daf5b106817af4c08c871c2fbe7b50c8dbaa962d"
+   "hash": "b67337ef57ed34a1a758bd1e87b782c7cf0404e3"
   },
   "assemble": {
    "state": "ok",
-   "time": "2026-09-30T13:58:19",
+   "time": "2026-09-30T14:15:54",
    "summary": "Assembler: generated Simple_VGA.sof (173312 bytes)",
    "sof": {
     "name": "Simple_VGA.sof",
     "size_bytes": 173312,
-    "mtime": 1790747899.3490055
+    "mtime": 1790748954.5358715
    },
-   "hash": "daf5b106817af4c08c871c2fbe7b50c8dbaa962d"
+   "hash": "b67337ef57ed34a1a758bd1e87b782c7cf0404e3"
   }
  },
  "sof": "Simple_VGA.sof"

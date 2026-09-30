@@ -284,6 +284,9 @@ function projectPortBits() {
 function renderPinPlanner(body) {
   if (!project || !boardDef) { body.innerHTML = '<div class="placeholder">Open a project first.</div>'; return; }
   if (!project.top) { body.innerHTML = '<div class="placeholder">Select a top module first (Tasks → Top Module).</div>'; return; }
+  // Preserve the port-list scroll position across re-renders (QSF edits
+  // re-render via the change handler AND via WS step broadcasts).
+  const keepScroll = (body.querySelector('.ppscroll') || {}).scrollTop || 0;
   const pins = boardPinList();
   const pinRes = Object.fromEntries(pins.map(p => [p.pin, p.resource]));
   const usedBy = {}; // pin -> port
@@ -316,6 +319,10 @@ function renderPinPlanner(body) {
       <tbody>${rows}</tbody></table></div>
     <div class="ppboard">${groupHtml}</div>
   </div>`;
+  if (keepScroll) {
+    const sc = body.querySelector('.ppscroll');
+    if (sc) sc.scrollTop = keepScroll;
+  }
 
   body.querySelectorAll('.pinsel').forEach(sel => {
     sel.addEventListener('change', async () => {
@@ -327,7 +334,7 @@ function renderPinPlanner(body) {
         if (pin) await apiPost('/api/qsf/assign', { port, pin });
         else await apiPost('/api/qsf/unassign', { port });
         if (pin) assignments[port] = pin; else delete assignments[port];
-        renderPinPlanner(body); // refresh used/disabled state
+        renderPinPlanner(body); // refresh used/disabled state (keeps scroll)
       } catch (e) {
         toast(e.message || String(e), true);
         sel.value = prev;
@@ -474,8 +481,14 @@ function wireFsModal() {
       $('fsError').hidden = false;
     }
   });
+  let fsOpening = false;
   $('fsSelect').addEventListener('click', async () => {
+    if (fsOpening) return;
+    fsOpening = true;
     $('fsError').hidden = true;
+    $('fsSelect').disabled = true;
+    $('fsCancel').disabled = true;
+    $('fsBusy').hidden = false;
     try {
       await apiPost('/api/project/open', { path: fsState.path });
       $('openProjModal').hidden = true;
@@ -486,6 +499,11 @@ function wireFsModal() {
     } catch (e) {
       $('fsError').textContent = e.message || String(e);
       $('fsError').hidden = false;
+    } finally {
+      fsOpening = false;
+      $('fsSelect').disabled = false;
+      $('fsCancel').disabled = false;
+      $('fsBusy').hidden = true;
     }
   });
 }
